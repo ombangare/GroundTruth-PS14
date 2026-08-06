@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 interface DegradationAnalysisPanelProps {
   bbox: { minLat: number; maxLat: number; minLon: number; maxLon: number } | null;
@@ -100,81 +101,24 @@ export default function DegradationAnalysisPanel({ bbox, startYear, endYear }: D
       ) : error ? (
         <div className="p-4 bg-bad/10 text-bad font-mono text-sm border-bad/50 rounded-lg">{error}</div>
       ) : data && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-          
-          {/* Main Stats Card */}
-          <div className="flex flex-col gap-3 border border-space-line p-4 rounded-lg bg-[#050811] shadow-xl">
-            <div className="flex items-center justify-between border-b border-space-line pb-2">
-              <span className="font-bold text-sm text-orange-400">Land Degradation Assessment</span>
-              <span className="text-xl">🍂</span>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mt-2 font-mono">
-              <div className="flex flex-col">
-                <span className="text-[10px] text-ink-muted uppercase">Degraded Area</span>
-                <span className="text-2xl font-bold text-orange-500">
-                  {data.degraded_area} <span className="text-xs font-normal text-ink-muted">km²</span>
-                </span>
-                <span className="text-[10px] text-ink-muted mt-1">out of {data.total_area} km²</span>
-              </div>
-              <div className="flex flex-col relative group">
-                <span className="text-[10px] text-ink-muted uppercase border-b border-dashed border-ink-muted/50 w-fit cursor-help">Primary Driver</span>
-                <span className="text-lg font-bold text-red-400 mt-1 leading-tight">{data.main_cause}</span>
-                <div className="absolute left-0 top-full mt-2 w-64 bg-[#050811] border border-cyan-900/50 text-[9px] text-cyan-100/80 p-3 rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
-                  <p className="mb-1"><strong>Validated Methodology:</strong></p>
-                  <p>Deduced by measuring persistent NDVI drop and negative transitions (Forest/Grass to Bare/Urban) in the Dynamic World land cover dataset.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-3 font-mono text-xs text-ink">
-              <div className="flex justify-between mb-1">
-                <span className="text-emerald-500">Healthy / Stable</span>
-                <span className="text-emerald-500">{data.healthy_area} km²</span>
-              </div>
-              <div className="w-full bg-gray-900 h-3 rounded-full overflow-hidden mb-3">
-                <div className="bg-emerald-600 h-full" style={{ width: `${Math.max(0, Math.min(100, (data.healthy_area / data.total_area) * 100))}%` }} />
-              </div>
-
-              <div className="flex justify-between mb-1">
-                <span className="text-orange-500">Degraded Land</span>
-                <span className="text-orange-500">{data.degraded_area} km²</span>
-              </div>
-              <div className="w-full bg-gray-900 h-3 rounded-full overflow-hidden mb-3">
-                <div className="bg-orange-500 h-full" style={{ width: `${Math.max(0, Math.min(100, (data.degraded_area / data.total_area) * 100))}%` }} />
-              </div>
-            </div>
+        <div className="mt-4 flex flex-col gap-4">
+          <div className="p-6 rounded-lg bg-[#050811] border border-space-line shadow-xl font-sans text-ink-muted">
+            <ReactMarkdown
+              components={{
+                h1: ({node, ...props}) => <h1 className="text-xl font-bold text-white mb-4 border-b border-space-line pb-2" {...props} />,
+                h2: ({node, ...props}) => <h2 className="text-lg font-bold text-orange-400 mt-6 mb-3" {...props} />,
+                h3: ({node, ...props}) => <h3 className="text-md font-bold text-amber-300 mt-4 mb-2" {...props} />,
+                p: ({node, ...props}) => <p className="mb-4 leading-relaxed text-gray-300" {...props} />,
+                ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-4 space-y-2 text-gray-300" {...props} />,
+                li: ({node, ...props}) => <li {...props} />,
+                strong: ({node, ...props}) => <strong className="font-bold text-white" {...props} />
+              }}
+            >
+              {data.llm_analysis || "Analysis unavailable."}
+            </ReactMarkdown>
           </div>
-
-          {/* SDG 15.3.1 Target Indicator Card */}
-          <div className="flex flex-col gap-2 border border-space-line p-4 rounded-lg bg-[#050811] shadow-xl justify-between">
-            <div>
-                <div className="flex items-center justify-between border-b border-space-line pb-2 mb-3">
-                <span className="font-bold text-sm text-cyan-400">SDG 15.3.1 Indicator</span>
-                <span className="text-xl">🌍</span>
-                </div>
-                <div className="font-mono text-[11px] text-gray-400 mt-1">
-                    Proportion of land that is degraded over total land area. Evaluated using Land Productivity & Cover Change.
-                </div>
-            </div>
-            
-            <div className="flex flex-col items-center justify-center py-4 relative">
-                <div className="text-4xl font-display font-bold text-ink mb-1">
-                    {data.degraded_area} <span className="text-xl">km²</span>
-                </div>
-                <div className="text-[10px] font-mono text-ink-muted mb-4 uppercase tracking-wider">
-                    Total Degraded Surface (Out of {data.total_area} km²)
-                </div>
-                <div className="font-mono text-xs px-3 py-1 rounded border bg-orange-500/10 border-orange-500/30 text-orange-400">
-                    Indicator Ratio: {((data.degraded_area / data.total_area) * 100).toFixed(1)}%
-                </div>
-            </div>
-            <div className="absolute -bottom-4 -right-4 p-3 opacity-[0.03] text-9xl pointer-events-none">🍂</div>
-          </div>
-
-          {/* Data Sources Footer */}
-          <div className="col-span-1 md:col-span-2 text-[9px] font-mono text-ink-muted/60 text-right mt-1">
-            Data computed on-the-fly via Google Earth Engine API using Sentinel-2 MSI (10m) & Dynamic World (10m).
+          <div className="text-[9px] font-mono text-ink-muted/60 text-right">
+            Generated via LangGraph pipeline & Google Earth Engine APIs
           </div>
         </div>
       )}

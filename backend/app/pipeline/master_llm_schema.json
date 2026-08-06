@@ -1,0 +1,61 @@
+{
+  "spatial_context": {
+    "total_area_analyzed_sqkm": 1250.0,
+    "bounding_box": {
+      "min_lat": 28.5,
+      "max_lat": 28.7,
+      "min_lon": 77.1,
+      "max_lon": 77.3
+    },
+    "centroid": {
+      "latitude": 28.6,
+      "longitude": 77.2
+    }
+  },
+  "temporal_context": {
+    "baseline_year": "2018",
+    "assessment_year": "2024",
+    "duration_years": 6
+  },
+  "data_lineage": [
+    "COPERNICUS/S2_SR_HARMONIZED (Sentinel-2 MSI, 10m)",
+    "GOOGLE/DYNAMICWORLD/V1 (10m)",
+    "WorldPop/GP/100m/pop (100m)"
+  ],
+  "sdg_analysis": {
+    "sdg_6_6_1_wetlands": {
+      "ecological_health_status": "Degraded",
+      "severity_level": "High",
+      "primary_anthropogenic_or_climatic_driver": "Agricultural Expansion",
+      "methodology_and_thresholds": {
+        "water_extraction": "mNDWI (Modified Normalized Difference Water Index) evaluated at < 20% cloud cover.",
+        "driver_attribution": "Temporal correlation checks: Negative NDWI/NDBI correlation -> Urbanization. NDWI to NDVI transition -> Agriculture. Local CHIRPS crash -> Drought."
+      },
+      "quantitative_findings": {
+        "total_water_lost_sqkm": 14.5,
+        "urban_encroachment_sqkm": 2.1,
+        "agricultural_encroachment_sqkm": 12.4
+      },
+      "policy_implications": "If agricultural or urban drivers are high, zoning enforcement is urgently required to protect remaining riparian buffers."
+    },
+    "sdg_11_3_1_urban_sprawl": {
+      "ecological_health_status": "Urban Sprawl",
+      "severity_level": "Critical",
+      "primary_anthropogenic_or_climatic_driver": "Unplanned Horizontal Expansion",
+      "methodology_and_thresholds": {
+        "lcr_extraction": "Logarithmic Land Consumption Rate: ln(Built_end / Built_start) / years.",
+        "pgr_extraction": "Logarithmic Population Growth Rate: ln(Pop_end / Pop_start) / years.",
+        "driver_attribution": "Calculated intersection of new Built-up pixels against historical vegetation masks to quantify ecological cost of sprawl."
+      },
+      "quantitative_findings": {
+        "lcr_pgr_ratio": 2.18,
+        "land_consumption_rate": 0.048,
+        "population_growth_rate": 0.022,
+        "agricultural_land_consumed_sqkm": 11.0,
+        "forest_land_consumed_sqkm": 3.0
+      },
+      "policy_implications": "Ratio > 1 indicates unsustainable outward sprawl, destroying adjacent ecologies. Prompts need for vertical densification policies."
+    }
+  },
+  "llm_instruction": "Act as an expert geospatial environmental scientist. Using the processed findings above, write a comprehensive, human-readable executive summary of the ecological status of this region."
+}

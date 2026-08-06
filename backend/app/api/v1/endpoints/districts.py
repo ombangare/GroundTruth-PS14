@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Query, BackgroundTasks, HTTPException
+from fastapi.responses import StreamingResponse
 from typing import Optional
 from pydantic import BaseModel
-from app.services import district_service, gee_service, gee_wetlands, gee_forests, gee_degradation, gee_urban_sprawl
+from app.services import district_service, gee_service
 
 class PointRequest(BaseModel):
     lat: float
@@ -16,67 +17,64 @@ class AreaRequest(BaseModel):
     startYear: Optional[str] = "2018"
     endYear: Optional[str] = "2024"
 
+class PipelineRequest(AreaRequest):
+    sdg_target: str
+
 router = APIRouter(prefix="/api/districts", tags=["districts"])
 
 @router.post("/analyze-wetland-health")
-def analyze_wetland_area(payload: AreaRequest):
-    from app.services import gee_wetlands
-    res = gee_wetlands.analyze_wetland_health(
-        payload.minLat, 
-        payload.maxLat, 
-        payload.minLon, 
-        payload.maxLon, 
-        payload.startYear, 
-        payload.endYear
-    )
+async def analyze_wetland_area(payload: AreaRequest):
+    from app.pipeline.graph import execute_sdg_pipeline
+    res = await execute_sdg_pipeline("6.6.1", payload.model_dump())
     if "error" in res and res["error"] != "Earth Engine not initialized":
         raise HTTPException(status_code=500, detail=res["error"])
     return res
 
 @router.post("/analyze-forest-cover")
-def analyze_forest_area(payload: AreaRequest):
-    from app.services import gee_forests
-    res = gee_forests.analyze_forest_cover(
-        payload.minLat, 
-        payload.maxLat, 
-        payload.minLon, 
-        payload.maxLon, 
-        payload.startYear, 
-        payload.endYear
-    )
+async def analyze_forest_area(payload: AreaRequest):
+    from app.pipeline.graph import execute_sdg_pipeline
+    res = await execute_sdg_pipeline("15.1.1", payload.model_dump())
     if "error" in res and res["error"] != "Earth Engine not initialized":
         raise HTTPException(status_code=500, detail=res["error"])
     return res
 
 @router.post("/analyze-land-degradation")
-def analyze_degradation_area(payload: AreaRequest):
-    from app.services import gee_degradation
-    res = gee_degradation.analyze_land_degradation(
-        payload.minLat, 
-        payload.maxLat, 
-        payload.minLon, 
-        payload.maxLon, 
-        payload.startYear, 
-        payload.endYear
-    )
+async def analyze_degradation_area(payload: AreaRequest):
+    from app.pipeline.graph import execute_sdg_pipeline
+    res = await execute_sdg_pipeline("15.3.1", payload.model_dump())
     if "error" in res and res["error"] != "Earth Engine not initialized":
         raise HTTPException(status_code=500, detail=res["error"])
     return res
 
 @router.post("/analyze-urban-sprawl")
-def analyze_sprawl_area(payload: AreaRequest):
-    from app.services import gee_urban_sprawl
-    res = gee_urban_sprawl.analyze_urban_sprawl(
-        payload.minLat, 
-        payload.maxLat, 
-        payload.minLon, 
-        payload.maxLon, 
-        payload.startYear, 
-        payload.endYear
-    )
+async def analyze_sprawl_area(payload: AreaRequest):
+    from app.pipeline.graph import execute_sdg_pipeline
+    res = await execute_sdg_pipeline("11.3.1", payload.model_dump())
     if "error" in res and res["error"] != "Earth Engine not initialized":
         raise HTTPException(status_code=500, detail=res["error"])
     return res
+
+@router.post("/pipeline/analyze")
+async def run_unified_pipeline(payload: PipelineRequest):
+    """Legacy Sync endpoint."""
+    from app.pipeline.graph import execute_sdg_pipeline
+    res = await execute_sdg_pipeline(payload.sdg_target, payload.model_dump())
+    if "error" in res:
+        raise HTTPException(status_code=500, detail=res["error"])
+    return res
+
+@router.post("/pipeline/analyze/stream")
+async def run_unified_pipeline_stream(payload: PipelineRequest):
+    """
+    Streaming ingestion pipeline endpoint (SSE). 
+    Yields the raw GEE JSON first, then parallel-processes LangGraph nodes, 
+    and streams the final markdown report tokens in real-time.
+    """
+    from app.pipeline.graph import stream_pipeline_analysis
+    return StreamingResponse(
+        stream_pipeline_analysis(payload.sdg_target, payload.model_dump()), 
+        media_type="text/event-stream"
+    )
 
 @router.post("/analyze-point")
 def analyze_map_click(payload: PointRequest):

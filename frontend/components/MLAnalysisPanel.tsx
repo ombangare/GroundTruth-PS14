@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 interface Bounds {
   minLat: number;
@@ -100,92 +101,24 @@ export default function MLAnalysisPanel({ bounds }: { bounds: Bounds }) {
       ) : error ? (
         <div className="p-4 bg-bad/10 text-bad font-mono text-sm border-bad/50 rounded-lg">{error}</div>
       ) : data && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-          
-          {/* Main Stats Card */}
-          <div className="flex flex-col gap-3 border border-space-line p-4 rounded-lg bg-[#050811] shadow-xl md:col-span-2">
-            <div className="flex items-center justify-between border-b border-space-line pb-2">
-              <span className="font-bold text-sm text-blue-400">Wetland Shrinkage & Causes</span>
-              <span className="text-xl">🦆</span>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mt-2 font-mono">
-              <div className="flex flex-col">
-                <span className="text-[10px] text-ink-muted uppercase">Total Loss</span>
-                <span className={`text-2xl font-bold ${data.wetland_loss > 0 ? 'text-bad' : 'text-emerald-400'}`}>
-                  {data.wetland_loss > 0 ? '-' : '+'}{Math.abs(data.wetland_loss)} <span className="text-xs font-normal text-ink-muted">km²</span>
-                </span>
-                <span className="text-[10px] text-ink-muted mt-1">Net spatial reduction</span>
-              </div>
-              <div className="flex flex-col relative group">
-                <span className="text-[10px] text-ink-muted uppercase border-b border-dashed border-ink-muted/50 w-fit cursor-help">Primary Driver</span>
-                <span className="text-lg font-bold text-amber-400 mt-1 leading-tight">{data.main_cause}</span>
-                <div className="absolute left-0 top-full mt-2 w-64 bg-[#050811] border border-cyan-900/50 text-[9px] text-cyan-100/80 p-3 rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
-                  <p className="mb-1"><strong>Validated Methodology:</strong></p>
-                  <p>Automatically deduced using peer-reviewed multi-index attribution techniques.</p>
-                  <p className="mt-1">By cross-referencing absolute wetland loss against Built-Up (NDBI), Vegetation (NDVI), and Rainfall (CHIRPS) historical thresholds, the model isolates anthropogenic encroachment from natural climatic stress. <em>(Ref: Monitoring of dynamic wetland changes using NDVI and NDWI based landsat imagery - 10.1016/j.rsase.2021.100547)</em></p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3 mt-4 pt-4 border-t border-space-line/50 font-mono text-xs">
-              
-              <div className="flex justify-between items-center">
-                <span className="text-ink-muted">Rainfall</span>
-                <div className="flex gap-2">
-                  <span className="text-ink line-through opacity-50">{data.rain_start}</span>
-                  <span className="text-cyan-400">{data.rain_end} mm</span>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-ink-muted">Built-up Area</span>
-                <div className="flex gap-2">
-                  <span className="text-ink line-through opacity-50">{data.urban_start}</span>
-                  <span className="text-rose-400">{data.urban_end} km²</span>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-ink-muted">Vegetation (NDVI)</span>
-                <div className="flex gap-2">
-                  <span className="text-ink line-through opacity-50">{data.ndvi_start}</span>
-                  <span className={`${data.ndvi_end < data.ndvi_start ? 'text-bad' : 'text-emerald-400'}`}>{data.ndvi_end}</span>
-                </div>
-              </div>
-
-            </div>
+        <div className="mt-4 flex flex-col gap-4">
+          <div className="p-6 rounded-lg bg-[#050811] border border-space-line shadow-xl font-sans text-ink-muted">
+            <ReactMarkdown
+              components={{
+                h1: ({node, ...props}) => <h1 className="text-xl font-bold text-white mb-4 border-b border-space-line pb-2" {...props} />,
+                h2: ({node, ...props}) => <h2 className="text-lg font-bold text-blue-400 mt-6 mb-3" {...props} />,
+                h3: ({node, ...props}) => <h3 className="text-md font-bold text-cyan-300 mt-4 mb-2" {...props} />,
+                p: ({node, ...props}) => <p className="mb-4 leading-relaxed text-gray-300" {...props} />,
+                ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-4 space-y-2 text-gray-300" {...props} />,
+                li: ({node, ...props}) => <li {...props} />,
+                strong: ({node, ...props}) => <strong className="font-bold text-white" {...props} />
+              }}
+            >
+              {data.llm_analysis || "Analysis unavailable."}
+            </ReactMarkdown>
           </div>
-
-          {/* SDG 6.6.1 Target Indicator Card */}
-          <div className="flex flex-col gap-2 border border-space-line p-4 rounded-lg bg-[#050811] shadow-xl justify-between relative overflow-hidden">
-            <div>
-              <div className="flex items-center justify-between border-b border-space-line pb-2 mb-3">
-                <span className="font-bold text-sm text-cyan-400 z-10">SDG 6.6.1 Indicator</span>
-                <span className="text-xl z-10">🎯</span>
-              </div>
-              <div className="font-mono text-[11px] text-gray-400 mt-1 z-10 relative">
-                Change in the spatial extent of water-related ecosystems over time.
-              </div>
-            </div>
-            
-            <div className="flex flex-col items-center justify-center py-4 relative z-10">
-              <div className={`text-5xl font-display font-bold mb-1 ${data.wetland_loss > 0 ? 'text-bad' : 'text-emerald-400'}`}>
-                {data.wetland_loss > 0 ? '-' : '+'}{Math.abs(data.wetland_loss)} km²
-              </div>
-              <div className="text-[10px] font-mono text-ink-muted mb-4 uppercase tracking-wider">
-                Recorded Spatial Change
-              </div>
-              <div className={`font-mono text-xs px-3 py-1 rounded border ${data.wetland_loss > 0 ? 'bg-bad/10 border-bad/30 text-bad' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'}`}>
-                {data.wetland_loss > 0 ? 'Negative trend detected' : 'Positive trend detected'}
-              </div>
-            </div>
-            <div className="absolute -bottom-4 -right-4 p-3 opacity-[0.03] text-9xl pointer-events-none">💧</div>
-          </div>
-          
-          {/* Data Sources Footer */}
-          <div className="col-span-1 md:col-span-2 text-[9px] font-mono text-ink-muted/60 text-right mt-1">
-            Data computed on-the-fly via Google Earth Engine API using Sentinel-2 MSI (10m) & CHIRPS Daily Precipitation.
+          <div className="text-[9px] font-mono text-ink-muted/60 text-right">
+            Generated via LangGraph pipeline & Google Earth Engine APIs
           </div>
         </div>
       )}
