@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Sora, Manrope, JetBrains_Mono } from "next/font/google";
+import CopilotWidget from "@/components/CopilotWidget";
 import "./globals.css";
 
 const display = Sora({
@@ -21,16 +22,15 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GroundTruth — SDG Tracking from Orbit",
-  description:
-    "Satellite-derived SDG indicators for Indian districts, translated into plain language.",
+  title: "GroundTruth - Environmental Intelligence Platform",
+  description: "Satellite-derived SDG tracking from orbit to ground.",
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="en">
       <body
@@ -39,6 +39,9 @@ export default function RootLayout({
         <div className="grain" />
         <div className="scan-sweep" />
         <div className="relative z-10">{children}</div>
+        
+        {/* Floating AI Copilot Widget */}
+        <CopilotWidget />
       </body>
     </html>
   );

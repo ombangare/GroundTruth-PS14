@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SatelliteTile from "./SatelliteTile";
 import type { IndicatorDetail } from "@/lib/api";
 
@@ -29,6 +29,13 @@ export default function BeforeAfterSlider({
   afterImageUrl,
 }: Props) {
   const [split, setSplit] = useState(50);
+  const [beforeError, setBeforeError] = useState(false);
+  const [afterError, setAfterError] = useState(false);
+
+  useEffect(() => {
+    setBeforeError(false);
+    setAfterError(false);
+  }, [beforeImageUrl, afterImageUrl]);
 
   const water = indicators.water;
   const green = indicators.green_cover;
@@ -47,8 +54,13 @@ export default function BeforeAfterSlider({
 
       <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden select-none">
         <div className="absolute inset-0">
-          {afterImageUrl ? (
-            <img src={afterImageUrl} alt={`${afterLabel} satellite view`} className="w-full h-full object-cover" />
+          {afterImageUrl && !afterError ? (
+            <img 
+              src={afterImageUrl} 
+              alt={`${afterLabel} satellite view`} 
+              className="w-full h-full object-cover" 
+              onError={() => setAfterError(true)} 
+            />
           ) : (
             <SatelliteTile
               seed={districtId}
@@ -64,8 +76,13 @@ export default function BeforeAfterSlider({
           className="absolute inset-0 overflow-hidden"
           style={{ clipPath: `inset(0 ${100 - split}% 0 0)` }}
         >
-          {beforeImageUrl ? (
-            <img src={beforeImageUrl} alt={`${beforeLabel} satellite view`} className="w-full h-full object-cover" />
+          {beforeImageUrl && !beforeError ? (
+            <img 
+              src={beforeImageUrl} 
+              alt={`${beforeLabel} satellite view`} 
+              className="w-full h-full object-cover" 
+              onError={() => setBeforeError(true)} 
+            />
           ) : (
             <SatelliteTile
               seed={districtId}

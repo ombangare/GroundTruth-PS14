@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+
+# Real satellite data
+earthengine-api
+
+# Supabase Auth Verification & Database & Rate Limiting
+PyJWT
+supabase
+slowapi
+
+# Google GenAI
+google-genai

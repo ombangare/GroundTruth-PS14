@@ -1,51 +1,69 @@
 import jwt
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException, status, Request
+from fastapi.security import HTTPBearer
+from typing import Optional, List
 from app.core.config import SUPABASE_JWT_SECRET
 
-security = HTTPBearer()
+# Centralized auth scheme, auto_error=False so we can manually handle absent tokens
+security = HTTPBearer(auto_error=False)
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+class RequireAuth:
     """
-    Validates the Supabase JWT token and extracts the user information.
-    """
-    token = credentials.credentials
-    try:
-        # Supabase uses HS256 algorithm by default
-        payload = jwt.decode(
-            token,
-            SUPABASE_JWT_SECRET,
-            algorithms=["HS256"],
-            # Supabase 'aud' is usually 'authenticated', but can be skipped or explicitly verified
-            options={"verify_aud": False} 
-        )
-        return payload
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-def require_researcher_role(current_user: dict = Depends(get_current_user)):
-    """
-    Example of RBAC based on the dbDesign.md doc.
-    Requires 'researcher' or 'admin' role to trigger expensive Earth Engine queries.
-    Note: Adjust the key path based on how roles are assigned in your Supabase setup.
-    """
-    # Roles can be stored in user_metadata or app_metadata in Supabase
-    app_metadata = current_user.get("app_metadata", {})
-    role = app_metadata.get("role", "viewer")
+    Centralized object-oriented auth dependency.
+    Routes can seamlessly opt-in/opt-out of auth and enforce specific RBAC roles.
     
-    if role not in ["researcher", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have permission to perform this action.",
-        )
-    return current_user
+    Usage in routes:
+    user = Depends(RequireAuth(required=False)) # Optional auth (returns dict or None)
+    user = Depends(RequireAuth(required=True))  # Strict auth (throws 401 if missing)
+    user = Depends(RequireAuth(allowed_roles=["admin", "researcher"])) # Role-based (throws 403)
+    """
+    def __init__(self, required: bool = True, allowed_roles: Optional[List[str]] = None):
+        self.required = required
+        self.allowed_roles = allowed_roles
+
+    def __call__(self, request: Request, credentials=Depends(security)) -> Optional[dict]:
+        if not credentials:
+            if self.required:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Authentication token is missing.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            return None
+
+        try:
+            # Supabase defaults to HS256 JWTs
+            payload = jwt.decode(
+                credentials.credentials,
+                SUPABASE_JWT_SECRET,
+                algorithms=["HS256"],
+                options={"verify_aud": False}
+            )
+        except jwt.ExpiredSignatureError:
+            if self.required:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Your authentication token has expired. Please log in again.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            return None
+        except jwt.InvalidTokenError:
+            if self.required:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid authentication token provided.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            return None
+
+        # RBAC Check
+        if self.allowed_roles:
+            app_metadata = payload.get("app_metadata", {})
+            user_role = app_metadata.get("role", "viewer")
+            if user_role not in self.allowed_roles:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Access Denied. Role '{user_role}' is not authorized to access this route."
+                )
+
+        return payload

@@ -1,0 +1,109 @@
+openapi: 3.0.3
+info:
+  title: GroundTruth API
+  description: Satellite-derived SDG progress tracking API for Indian districts using Google Earth Engine.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+paths:
+  /api/districts:
+    get:
+      summary: List Districts
+      description: Returns a summary list of all tracked districts with severity indicators.
+      tags:
+        - Districts
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DistrictSummary'
+  /api/districts/{district_id}:
+    get:
+      summary: Get District Detail
+      description: Returns detailed indicator comparison for a specific district, triggering live GEE computation if not cached.
+      tags:
+        - Districts
+      parameters:
+        - name: district_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: year_before
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 2017
+        - name: year_after
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 2024
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DistrictDetail'
+        '404':
+          description: District not found
+components:
+  schemas:
+    DistrictSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        state:
+          type: string
+        lat:
+          type: number
+        lon:
+          type: number
+        period_before:
+          type: string
+        period_after:
+          type: string
+        overall_severity:
+          type: string
+          enum: [good, warn, bad, pending]
+        data_source:
+          type: string
+          enum: [live, database, pending]
+        indicator_summary:
+          type: object
+    DistrictDetail:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        state:
+          type: string
+        lat:
+          type: number
+        lon:
+          type: number
+        period_before:
+          type: string
+        period_after:
+          type: string
+        overall_severity:
+          type: string
+        data_source:
+          type: string
+        indicators:
+          type: object
+        images:
+          type: object

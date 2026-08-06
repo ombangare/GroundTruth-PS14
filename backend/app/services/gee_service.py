@@ -2,12 +2,8 @@
 Google Earth Engine Service
 ============================
 
-This module does the REAL satellite computation — it replaces mock_districts.py
-once you've completed the setup in SETUP_GEE.md.
+This module does the REAL satellite computation.
 
-It's gated behind USE_GEE (see config.py) so the app keeps working on mock
-data until you've actually got credentials wired up — you can develop the UI
-and demo flow without waiting on GEE approval, then flip one flag.
 
 WHAT THIS ACTUALLY COMPUTES (all server-side, inside Earth Engine's cloud —
 we never download raw satellite imagery, just the final numbers):
@@ -26,7 +22,6 @@ AREA OF INTEREST NOTE:
 
 import os
 from datetime import datetime
-from app.services import district_boundaries
 
 try:
     import ee

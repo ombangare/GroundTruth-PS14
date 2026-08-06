@@ -42,10 +42,71 @@ async function getAuthHeaders() {
 }
 
 export async function fetchDistricts(): Promise<DistrictSummary[]> {
-  const headers = await getAuthHeaders();
-  const res = await fetch(`${API_BASE}/api/districts/`, { cache: "no-store", headers });
-  if (!res.ok) throw new Error("Failed to fetch districts");
-  return res.json();
+  // Bypass backend API for initial load - query Supabase directly
+  if (process.env.NODE_ENV === "development") {
+    console.log("[GeoJSON] Executing fetch: /districts.geojson");
+    console.log("[Supabase] Executing query: SELECT district_id, indicators FROM indicator_comparisons WHERE period_before='2017' AND period_after='2024'");
+  }
+
+  const [districtsGeoJson, cacheRes] = await Promise.all([
+    fetch("/districts.geojson").then(r => r.json()),
+    supabase.from("indicator_comparisons").select("district_id, indicators").eq("period_before", "2017").eq("period_after", "2024")
+  ]);
+
+  if (cacheRes.error) throw new Error("Failed to fetch cache from Supabase: " + cacheRes.error.message);
+
+  const cacheLookup = new Map(cacheRes.data.map((row: any) => [row.district_id, row.indicators]));
+  
+  const uniqueDistricts = new Map();
+  districtsGeoJson.features.forEach((f: any) => {
+    const p = f.properties;
+    if (p && p.id && typeof p.lat === 'number' && typeof p.lon === 'number') {
+      uniqueDistricts.set(p.id, p);
+    }
+  });
+  const rawDistricts = Array.from(uniqueDistricts.values());
+
+  return rawDistricts.map((d: any) => {
+    const rawIndicators = cacheLookup.get(d.id);
+    let overallSeverity: Severity = "pending";
+    let dataSource: "live" | "mock" | "pending" = "pending";
+    let summary: Record<string, any> = {};
+
+    if (rawIndicators) {
+      dataSource = "database";
+      
+      const severities = Object.values(rawIndicators).map((v: any) => v.severity);
+      if (severities.includes("bad")) overallSeverity = "bad";
+      else if (severities.includes("warn")) overallSeverity = "warn";
+      else if (severities.every((s) => s === "pending")) overallSeverity = "pending";
+      else overallSeverity = "good";
+
+      for (const [key, val] of Object.entries(rawIndicators)) {
+        summary[key] = {
+          severity: (val as any).severity,
+          pct_change: (val as any).pct_change
+        };
+      }
+    } else {
+      const pendingKeys = ["water", "green_cover", "urban_heat", "climate_action"];
+      for (const k of pendingKeys) {
+        summary[k] = { severity: "pending", pct_change: null };
+      }
+    }
+
+    return {
+      id: d.id,
+      name: d.name,
+      state: d.state,
+      lat: d.latitude || d.lat,
+      lon: d.longitude || d.lon,
+      period_before: "2017",
+      period_after: "2024",
+      overall_severity: overallSeverity,
+      data_source: dataSource,
+      indicator_summary: summary,
+    };
+  });
 }
 
 export async function fetchDistrict(id: string, yearBefore?: number, yearAfter?: number): Promise<DistrictDetail> {

@@ -1,18 +1,12 @@
 # Database Architecture (Supabase / PostgreSQL)
 
-This document outlines the database design for the GroundTruth application, focusing on robust data storage, Role-Based Access Control (RBAC), and time-series data tracking for satellite indicators.
+This document outlines the database design for the GroundTruth application, focusing on robust data storage and caching for satellite indicators. 
 
-## 1. Authentication & Role-Based Access Control (RBAC)
+> **Note:** We do not use Row Level Security (RLS) in Supabase. The Supabase database is strictly accessed via our FastAPI backend using the Service Role Key. All authentication and role-based access control (RBAC) is enforced at the backend API layer.
 
-We leverage Supabase's built-in Auth module and PostgreSQL Row Level Security (RLS).
+## Setup Instructions (SQL)
 
-### `public.profiles`
-Extends the `auth.users` table to store application-specific user data and roles.
-- `id` (UUID, Primary Key, Foreign Key to `auth.users.id`)
-- `role` (Enum: `admin`, `researcher`, `viewer`)
-- `first_name` (Text)
-- `last_name` (Text)
-- `created_at` (Timestamp)
+You can easily set up the Supabase database by running the following SQL commands in the Supabase SQL Editor.
 
 ### 1. Database Setup
 

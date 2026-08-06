@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI
+from app.routers import copilot
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.endpoints import districts, auth
 from fastapi.responses import JSONResponse
@@ -31,6 +32,7 @@ app.add_middleware(
 
 app.include_router(districts.router)
 app.include_router(auth.router)
+app.include_router(copilot.router, prefix="/api/v1/copilot", tags=["copilot"])
 
 
 @app.get("/")

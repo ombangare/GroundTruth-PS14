@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
+import { useEffect, useState } from "react";
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap, GeoJSON } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { DistrictSummary } from "@/lib/api";
@@ -39,7 +39,44 @@ function FitBoundsToDistricts({ districts }: { districts: DistrictSummary[] }) {
 }
 
 export default function DistrictMap({ districts, selectedId, onSelect }: Props) {
-  const fallbackCenter: [number, number] = [20.5937, 78.9629]; // India centroid, used only before districts load
+  const fallbackCenter: [number, number] = [20.5937, 78.9629];
+  const [geoData, setGeoData] = useState<any>(null);
+
+  useEffect(() => {
+    fetch("/districts.geojson")
+      .then((res) => res.json())
+      .then((data) => setGeoData(data))
+      .catch((err) => console.error("Failed to load geojson", err));
+  }, []);
+
+  const districtMap = new Map(districts.map((d) => [d.id, d]));
+
+  const geoStyle = (feature: any) => {
+    const id = feature.properties.id;
+    const isSelected = id === selectedId;
+    const d = districtMap.get(id);
+    const severity = d?.overall_severity || "pending";
+    const isPending = severity === "pending";
+
+    return {
+      color: isSelected ? "#ffffff" : "rgba(255, 255, 255, 0.15)",
+      weight: isSelected ? 2.5 : 0.5,
+      fillColor: SEVERITY_COLOR[severity] || SEVERITY_COLOR.pending,
+      fillOpacity: isSelected ? 0.6 : (isPending ? 0 : 0.35),
+    };
+  };
+
+  const onEachFeature = (feature: any, layer: any) => {
+    const id = feature.properties.id;
+    const name = feature.properties.name;
+    const state = feature.properties.state;
+    
+    layer.on({
+      click: () => onSelect(id),
+    });
+    
+    layer.bindPopup(`<span class="font-semibold">${name}</span>, ${state}`);
+  };
 
   return (
     <MapContainer
@@ -63,27 +100,36 @@ export default function DistrictMap({ districts, selectedId, onSelect }: Props) 
         maxZoom={19}
         opacity={0.9}
       />
-      {districts.map((d) => {
-        const isSelected = d.id === selectedId;
-        return (
-          <CircleMarker
-            key={d.id}
-            center={[d.lat, d.lon]}
-            radius={isSelected ? 12 : 7}
-            pathOptions={{
-              color: "#ffffff",
-              fillColor: SEVERITY_COLOR[d.overall_severity],
-              fillOpacity: isSelected ? 0.95 : 0.85,
-              weight: isSelected ? 3 : 1.5,
-            }}
-            eventHandlers={{ click: () => onSelect(d.id) }}
-          >
-            <Popup>
-              <span className="font-semibold">{d.name}</span>, {d.state}
-            </Popup>
-          </CircleMarker>
-        );
-      })}
+      {geoData ? (
+        <GeoJSON
+          key={selectedId} // Force re-render on selection change to update styles
+          data={geoData}
+          style={geoStyle}
+          onEachFeature={onEachFeature}
+        />
+      ) : (
+        districts.map((d) => {
+          const isSelected = d.id === selectedId;
+          return (
+            <CircleMarker
+              key={d.id}
+              center={[d.lat, d.lon]}
+              radius={isSelected ? 12 : 7}
+              pathOptions={{
+                color: "#ffffff",
+                fillColor: SEVERITY_COLOR[d.overall_severity],
+                fillOpacity: isSelected ? 0.95 : 0.85,
+                weight: isSelected ? 3 : 1.5,
+              }}
+              eventHandlers={{ click: () => onSelect(d.id) }}
+            >
+              <Popup>
+                <span className="font-semibold">{d.name}</span>, {d.state}
+              </Popup>
+            </CircleMarker>
+          );
+        })
+      )}
     </MapContainer>
   );
 }

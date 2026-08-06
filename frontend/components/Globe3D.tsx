@@ -48,38 +48,28 @@ const atmosphereFragment = `
   }
 `;
 
-// Pin-shaped marker texture (teardrop + white circle), drawn once per
-// color and cached — replaces the plain floating-sphere-with-ring look.
-const _pinTextureCache = new Map<string, THREE.CanvasTexture>();
-function getPinTexture(color: string): THREE.CanvasTexture {
-  const cached = _pinTextureCache.get(color);
+// Small glowing dot texture for high-density district mapping
+const _dotTextureCache = new Map<string, THREE.CanvasTexture>();
+function getDotTexture(color: string): THREE.CanvasTexture {
+  const cached = _dotTextureCache.get(color);
   if (cached) return cached;
 
   const canvas = document.createElement("canvas");
-  canvas.width = 64;
-  canvas.height = 80;
+  canvas.width = 32;
+  canvas.height = 32;
   const ctx = canvas.getContext("2d")!;
 
-  ctx.beginPath();
-  ctx.moveTo(32, 78);
-  ctx.quadraticCurveTo(6, 42, 6, 26);
-  ctx.arc(32, 26, 26, Math.PI, 0, false);
-  ctx.quadraticCurveTo(58, 42, 32, 78);
-  ctx.closePath();
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = "rgba(255,255,255,0.9)";
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(32, 26, 11, 0, Math.PI * 2);
-  ctx.fillStyle = "#ffffff";
-  ctx.fill();
+  const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+  gradient.addColorStop(0, "#ffffff");
+  gradient.addColorStop(0.4, color);
+  gradient.addColorStop(1, "transparent");
+  
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 32, 32);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
-  _pinTextureCache.set(color, texture);
+  _dotTextureCache.set(color, texture);
   return texture;
 }
 
@@ -95,20 +85,21 @@ function Marker({
   active: boolean;
 }) {
   const ref = useRef<THREE.Sprite>(null);
-  const texture = useMemo(() => getPinTexture(color), [color]);
+  const texture = useMemo(() => getDotTexture(color), [color]);
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
     const t = clock.getElapsedTime();
-    const pulse = active ? 1.35 + Math.sin(t * 3) * 0.15 : 1;
-    ref.current.scale.set(0.14 * pulse, 0.175 * pulse, 1);
+    const baseSize = active ? 0.06 : 0.015;
+    const pulse = active ? 1.0 + Math.sin(t * 3) * 0.15 : 1;
+    ref.current.scale.set(baseSize * pulse, baseSize * pulse, 1);
   });
 
   return (
     <sprite
       ref={ref}
       position={position}
-      scale={[0.14, 0.175, 1]}
+      scale={[0.015, 0.015, 1]}
       onClick={(e) => {
         e.stopPropagation();
         onClick();
