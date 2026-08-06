@@ -1,0 +1,11 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-dotenv==1.0.1
+
+# Real satellite data — see backend/SETUP_GEE.md before enabling USE_GEE=true.
+# Uncomment once you've registered a Google Cloud project for Earth Engine:
+# earthengine-api==1.1.2
+
+# --- Optional, only needed if you move from point-buffer AOIs to real district shapefiles ---
+# geopandas==0.14.4
+# rasterio==1.3.10
