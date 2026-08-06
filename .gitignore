@@ -8,12 +8,7 @@ frontend/.next/
 frontend/out/
 
 # Python
-backend/venv/
-backend/__pycache__/
 *.pyc
 
 # Secrets & Cache
-backend/.env
-backend/data/cache/
 .DS_Store
-backend/
