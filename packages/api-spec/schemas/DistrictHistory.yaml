@@ -1,0 +1,20 @@
+type: object
+properties:
+  district_id:
+    type: string
+  cached_years:
+    type: array
+    items:
+      type: integer
+    description: List of years that have cached indicator readings in the database.
+  readings:
+    type: array
+    items:
+      type: object
+      properties:
+        year:
+          type: integer
+        indicator_id:
+          type: string
+        value:
+          type: number

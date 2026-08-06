@@ -1,0 +1,32 @@
+type: object
+properties:
+  id:
+    type: string
+  name:
+    type: string
+  state:
+    type: string
+  lat:
+    type: number
+  lon:
+    type: number
+  period_before:
+    type: string
+  period_after:
+    type: string
+  overall_severity:
+    type: string
+    enum: [good, warn, bad, pending]
+  data_source:
+    type: string
+    enum: [live, mock, pending]
+  indicator_summary:
+    type: object
+    additionalProperties:
+      type: object
+      properties:
+        severity:
+          type: string
+        pct_change:
+          type: number
+          nullable: true

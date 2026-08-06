@@ -1,0 +1,12 @@
+get:
+  summary: List All Districts
+  description: Provides a lightweight list of all districts, designed for rendering map views. It includes basic location data and a summary of the indicator severities, but excludes heavy indicator breakdowns and satellite images.
+  responses:
+    '200':
+      description: A list of districts
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '../schemas/DistrictSummary.yaml'

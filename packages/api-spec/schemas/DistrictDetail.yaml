@@ -1,0 +1,35 @@
+type: object
+properties:
+  id:
+    type: string
+  name:
+    type: string
+  state:
+    type: string
+  lat:
+    type: number
+  lon:
+    type: number
+  period_before:
+    type: string
+  period_after:
+    type: string
+  overall_severity:
+    type: string
+    enum: [good, warn, bad, pending]
+  data_source:
+    type: string
+    enum: [live, mock, pending]
+  indicators:
+    type: object
+    additionalProperties:
+      $ref: './Indicator.yaml'
+  images:
+    type: object
+    properties:
+      before:
+        type: string
+        nullable: true
+      after:
+        type: string
+        nullable: true

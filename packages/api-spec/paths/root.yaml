@@ -1,0 +1,21 @@
+get:
+  summary: Root Information
+  description: Returns basic metadata and available endpoints for the service.
+  responses:
+    '200':
+      description: Successful response
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              service:
+                type: string
+              status:
+                type: string
+              docs:
+                type: string
+              endpoints:
+                type: array
+                items:
+                  type: string

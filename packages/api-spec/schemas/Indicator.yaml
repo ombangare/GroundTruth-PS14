@@ -1,0 +1,22 @@
+type: object
+properties:
+  sdg:
+    type: string
+  label:
+    type: string
+  index_used:
+    type: string
+  before_value:
+    type: number
+    nullable: true
+  after_value:
+    type: number
+    nullable: true
+  pct_change:
+    type: number
+    nullable: true
+  severity:
+    type: string
+    enum: [good, warn, bad, pending]
+  verdict:
+    type: string
