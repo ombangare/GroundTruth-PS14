@@ -48,11 +48,11 @@ export default function Home() {
         setDetail(d);
         setDetailLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
         setDetail(null);
         setDetailLoading(false);
         setDetailError(
-          "Couldn't load this district. If USE_GEE=true, the live Earth Engine query may have failed or timed out — check the backend terminal for the exact error."
+          err.message || "An unexpected error occurred while fetching the district data."
         );
       });
   }, [selectedId]);
@@ -156,8 +156,9 @@ export default function Home() {
       <div className="orbit-line mx-6 md:mx-10" />
 
       {error && (
-        <div className="mx-6 md:mx-10 mt-6 hud-panel px-4 py-3 text-bad text-sm font-mono border-bad/50">
-          {error}
+        <div className="mx-6 md:mx-10 mt-6 hud-panel px-4 py-4 bg-bad/10 text-bad text-sm font-mono border-bad/50 flex items-center gap-3">
+          <span className="text-xl">⚠️</span>
+          <span>{error}</span>
         </div>
       )}
 
@@ -217,7 +218,10 @@ export default function Home() {
               Querying satellite indicators for {selectedId ?? "district"}...
             </div>
           ) : detailError ? (
-            <div className="hud-panel p-6 text-bad font-mono text-sm">{detailError}</div>
+            <div className="hud-panel p-6 bg-bad/10 text-bad font-mono text-sm border-bad/50 flex items-start gap-3">
+              <span className="text-xl">⚠️</span>
+              <p className="mt-1">{detailError}</p>
+            </div>
           ) : (
             <div className="hud-panel p-6 text-ink-muted font-mono text-sm">
               Select a district on the globe or map to view its SDG signal breakdown.

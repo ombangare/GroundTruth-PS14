@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.dependencies import get_current_user, require_researcher_role
+from app.api.dependencies.auth import get_current_user, require_researcher_role
 
 # Centralized router for auth-protected endpoints, to avoid disturbing public routes initially
 router = APIRouter(prefix="/api/secure", tags=["secure"])

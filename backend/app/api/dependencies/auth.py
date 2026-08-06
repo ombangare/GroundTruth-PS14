@@ -1,7 +1,7 @@
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.config import SUPABASE_JWT_SECRET
+from app.core.config import SUPABASE_JWT_SECRET
 
 security = HTTPBearer()
 

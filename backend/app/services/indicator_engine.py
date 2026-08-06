@@ -31,12 +31,13 @@ NEXT STEP (when you plug in Google Earth Engine):
   contract is designed around `before_value` / `after_value` pairs.
 """
 
-from app.data.mock_districts import DISTRICTS
-from app.config import USE_GEE
+from app.data.districts_registry import DISTRICTS
+from app.core.config import USE_GEE
 from app.services import gee_service
 from app.services import gee_cache
 import copy
 from typing import Optional
+from app.core.exceptions import EarthEngineError
 
 _gee_ready = False
 if USE_GEE:
@@ -166,47 +167,42 @@ def get_district(district_id: str, year_before: Optional[int] = None, year_after
 
 def _get_indicators_for(d: dict, use_live: bool) -> dict | None:
     """
-    Returns the raw indicator dict for a district. Order of preference:
-      1. Disk cache (instant — no Earth Engine call at all)
-      2. Live Earth Engine (only on a cache miss)
-      3. Legacy mock fixture (older hand-typed entries only)
-      4. None ("pending" — nothing available)
-
-    Images are computed and cached together with indicators in the same
-    Earth Engine round, so a cache hit skips ALL satellite queries for
-    this district, not just the indicator ones.
+    Returns the raw indicator dict for a district.
+    1. Checks Database (Supabase cache) first.
+    2. If not found and use_live is True, calls Earth Engine and caches result.
+    3. If use_live is False (e.g. map list view), returns None (pending).
     """
-    if use_live and _gee_ready:
-        cached = gee_cache.get(d["id"], d["period_before"], d["period_after"])
-        if cached is not None:
-            d["_data_source"] = "live"
-            d["_cached_images"] = cached.get("images", {"before": None, "after": None})
-            return cached["indicators"]
+    cached = gee_cache.get(d["id"], d["period_before"], d["period_after"])
+    if cached is not None:
+        d["_data_source"] = "database"
+        d["_cached_images"] = cached.get("images", {"before": None, "after": None})
+        return cached["indicators"]
 
-        try:
-            result = gee_service.compute_district_indicators(
-                lat=d["lat"], lon=d["lon"],
-                before_year=d["period_before"], after_year=d["period_after"],
-                district=d,
-            )
-            images = gee_service.get_district_images(
-                lat=d["lat"], lon=d["lon"],
-                before_year=d["period_before"], after_year=d["period_after"],
-                district=d,
-            )
-            d["_data_source"] = "live"
-            d["_cached_images"] = images
-            gee_cache.set(d["id"], d["period_before"], d["period_after"], result, images)
-            return result
-        except Exception as e:
-            print(f"[indicator_engine] Live GEE call failed for {d['name']}: {e} — marking as pending for this district.")
+    if not use_live:
+        d["_data_source"] = "pending"
+        return None
 
-    if "indicators" in d:
-        d["_data_source"] = "mock"
-        return d["indicators"]
+    if not _gee_ready:
+        raise EarthEngineError("Earth Engine is not initialized or configured properly. Please check your credentials.")
 
-    d["_data_source"] = "pending"
-    return None
+    try:
+        result = gee_service.compute_district_indicators(
+            lat=d["lat"], lon=d["lon"],
+            before_year=d["period_before"], after_year=d["period_after"],
+            district=d,
+        )
+        images = gee_service.get_district_images(
+            lat=d["lat"], lon=d["lon"],
+            before_year=d["period_before"], after_year=d["period_after"],
+            district=d,
+        )
+        d["_data_source"] = "live"
+        d["_cached_images"] = images
+        gee_cache.set(d["id"], d["period_before"], d["period_after"], result, images)
+        return result
+    except Exception as e:
+        print(f"[indicator_engine] Live GEE call failed for {d['name']}: {e}")
+        raise EarthEngineError(f"Failed to fetch satellite data: {str(e)}")
 
 
 def _get_images_for(d: dict) -> dict:
@@ -338,7 +334,7 @@ def _summarize_district(d: dict, detailed: bool = False, use_live: bool = False)
         "period_before": d["period_before"],
         "period_after": d["period_after"],
         "overall_severity": overall,
-        "data_source": d.get("_data_source", "mock"),
+        "data_source": d.get("_data_source", "pending"),
     }
 
     if detailed:

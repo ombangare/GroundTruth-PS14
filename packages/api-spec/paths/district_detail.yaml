@@ -36,3 +36,22 @@ get:
             properties:
               detail:
                 type: string
+    '500':
+      description: Internal Server Error (e.g., Earth Engine compute failed)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              detail:
+                type: string
+    '503':
+      description: Service Unavailable (e.g., Earth Engine not initialized or missing credentials)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              detail:
+                type: string
+

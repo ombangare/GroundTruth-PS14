@@ -37,8 +37,23 @@ export async function fetchDistricts(): Promise<DistrictSummary[]> {
   return res.json();
 }
 
-export async function fetchDistrict(id: string): Promise<DistrictDetail> {
-  const res = await fetch(`${API_BASE}/api/districts/${id}`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`Failed to fetch district ${id}`);
+export async function fetchDistrict(id: string, yearBefore?: number, yearAfter?: number): Promise<DistrictDetail> {
+  const params = new URLSearchParams();
+  if (yearBefore) params.append("year_before", yearBefore.toString());
+  if (yearAfter) params.append("year_after", yearAfter.toString());
+  
+  const url = `${API_BASE}/api/districts/${id}${params.toString() ? '?' + params.toString() : ''}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    let errorMsg = `Failed to fetch district ${id}`;
+    try {
+      const errData = await res.json();
+      if (errData.detail) errorMsg = errData.detail;
+    } catch (e) {
+      // JSON parsing failed, use default message
+    }
+    throw new Error(errorMsg);
+  }
   return res.json();
 }
+

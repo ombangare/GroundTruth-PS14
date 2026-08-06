@@ -1,5 +1,5 @@
 from supabase import create_client, Client
-from app.config import SUPABASE_URL, SUPABASE_KEY
+from app.core.config import SUPABASE_URL, SUPABASE_KEY
 
 # Initialize the Supabase client
 # Depending on your environment, you can use the service role key for backend access
