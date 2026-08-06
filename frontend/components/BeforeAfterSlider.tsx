@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import SatelliteTile from "./SatelliteTile";
+import { useState, useEffect, useRef } from "react";
 import type { IndicatorDetail } from "@/lib/api";
+import { Rnd } from "react-rnd";
 
 interface Props {
   districtId: string;
@@ -13,15 +13,9 @@ interface Props {
   beforeImageUrl?: string | null;
   afterImageUrl?: string | null;
   onImageClick?: (lat: number, lon: number) => void;
+  onAreaSelect?: (bounds: {minLat: number, maxLat: number, minLon: number, maxLon: number}) => void;
 }
 
-/**
- * Shows a real GEE-exported <img> when available (afterImageUrl/beforeImageUrl
- * come from the backend once USE_GEE=true). Falls back to SatelliteTile — a
- * visualization actually driven by this district's real water/vegetation/heat
- * numbers — rather than a decorative gradient, so the fallback still means
- * something instead of just being a color-drag toy.
- */
 export default function BeforeAfterSlider({
   districtId,
   district,
@@ -31,10 +25,21 @@ export default function BeforeAfterSlider({
   beforeImageUrl,
   afterImageUrl,
   onImageClick,
+  onAreaSelect,
 }: Props) {
   const [split, setSplit] = useState(50);
   const [beforeError, setBeforeError] = useState(false);
   const [afterError, setAfterError] = useState(false);
+  
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Drawing state
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [drawStart, setDrawStart] = useState<{x: number, y: number} | null>(null);
+  const [drawCurrent, setDrawCurrent] = useState<{x: number, y: number} | null>(null);
+  
+  // Persisted Rnd box state
+  const [box, setBox] = useState<{x: number, y: number, w: number, h: number} | null>(null);
 
   useEffect(() => {
     setBeforeError(false);
@@ -45,25 +50,88 @@ export default function BeforeAfterSlider({
   const green = indicators.green_cover;
   const heat = indicators.urban_heat;
 
-  const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!onImageClick || !district || !beforeImageUrl) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const xPct = (e.clientX - rect.left) / rect.width;
-    const yPct = (e.clientY - rect.top) / rect.height;
+  const triggerAreaSelect = (x: number, y: number, w: number, h: number) => {
+    if (!district || !onAreaSelect || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
     
-    // In gee_service, we use a 5000m buffer.
-    // 5000m is ~0.045 degrees.
-    const boundsSizeDeg = 0.045;
+    const boundsSizeDeg = 0.045; // ~5km buffer used in GEE
     const minLon = district.lon - boundsSizeDeg;
     const maxLon = district.lon + boundsSizeDeg;
     const minLat = district.lat - boundsSizeDeg;
     const maxLat = district.lat + boundsSizeDeg;
+
+    const minXPct = x / rect.width;
+    const maxXPct = (x + w) / rect.width;
+    const minYPct = y / rect.height;
+    const maxYPct = (y + h) / rect.height;
+
+    const lon1 = minLon + (minXPct * (maxLon - minLon));
+    const lon2 = minLon + (maxXPct * (maxLon - minLon));
+    const lat1 = maxLat - (maxYPct * (maxLat - minLat)); // lower lat
+    const lat2 = maxLat - (minYPct * (maxLat - minLat)); // higher lat
+
+    onAreaSelect({ minLat: lat1, maxLat: lat2, minLon: lon1, maxLon: lon2 });
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!district || !containerRef.current) return;
     
-    // Y is inverted (0 is top, which is maxLat)
-    const clickLon = minLon + (xPct * (maxLon - minLon));
-    const clickLat = maxLat - (yPct * (maxLat - minLat));
+    // Ignore clicks if they originate from the Rnd box (resize/drag handles)
+    // Rnd automatically stops propagation for drags, but just in case:
+    if ((e.target as HTMLElement).closest('.rnd-box')) return;
     
-    onImageClick(clickLat, clickLon);
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    setBox(null);
+    setDrawStart({ x, y });
+    setDrawCurrent({ x, y });
+    setIsDrawing(true);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDrawing || !drawStart || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setDrawCurrent({ x, y });
+  };
+
+  const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDrawing || !drawStart || !drawCurrent || !containerRef.current) return;
+    setIsDrawing(false);
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const widthPx = Math.abs(drawCurrent.x - drawStart.x);
+    const heightPx = Math.abs(drawCurrent.y - drawStart.y);
+
+    if (widthPx < 5 && heightPx < 5) {
+      if (onImageClick) {
+        const boundsSizeDeg = 0.045;
+        const minLon = district.lon - boundsSizeDeg;
+        const maxLon = district.lon + boundsSizeDeg;
+        const minLat = district.lat - boundsSizeDeg;
+        const maxLat = district.lat + boundsSizeDeg;
+        
+        const xPct = drawStart.x / rect.width;
+        const yPct = drawStart.y / rect.height;
+        const clickLon = minLon + (xPct * (maxLon - minLon));
+        const clickLat = maxLat - (yPct * (maxLat - minLat));
+        onImageClick(clickLat, clickLon);
+      }
+      setDrawStart(null);
+      setDrawCurrent(null);
+      return;
+    }
+
+    const x = Math.min(drawStart.x, drawCurrent.x);
+    const y = Math.min(drawStart.y, drawCurrent.y);
+    setBox({ x, y, w: widthPx, h: heightPx });
+    triggerAreaSelect(x, y, widthPx, heightPx);
+    
+    setDrawStart(null);
+    setDrawCurrent(null);
   };
 
   return (
@@ -72,14 +140,61 @@ export default function BeforeAfterSlider({
         <p className="font-mono text-[10px] text-signal uppercase tracking-widest">
           Before / After — {water?.index_used} · {green?.index_used} · {heat?.index_used}
         </p>
-        <span className="font-mono text-[10px] text-aurora-magenta animate-pulse">Click image to analyze point</span>
+        <span className="font-mono text-[10px] text-aurora-magenta animate-pulse">Draw area to analyze</span>
       </div>
 
       <div 
-        className="relative w-full aspect-[16/9] rounded-lg overflow-hidden select-none cursor-crosshair"
-        onClick={handleImageClick}
+        ref={containerRef}
+        className="relative w-full aspect-[16/9] rounded-lg overflow-hidden select-none"
       >
-        <div className="absolute inset-0">
+        <div 
+          className="absolute inset-0 z-20 cursor-crosshair"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={() => { setIsDrawing(false); setDrawStart(null); setDrawCurrent(null); }}
+        />
+
+        {/* Resizable/Draggable Persistent Box */}
+        {box && (
+          <Rnd
+            className="rnd-box border-2 border-aurora-magenta bg-aurora-magenta/20 shadow-[0_0_20px_rgba(244,114,182,0.4)] z-30"
+            bounds="parent"
+            position={{ x: box.x, y: box.y }}
+            size={{ width: box.w, height: box.h }}
+            onDragStop={(e, d) => {
+              setBox(prev => prev ? { ...prev, x: d.x, y: d.y } : null);
+              triggerAreaSelect(d.x, d.y, box.w, box.h);
+            }}
+            onResizeStop={(e, direction, ref, delta, position) => {
+              const newW = parseInt(ref.style.width, 10);
+              const newH = parseInt(ref.style.height, 10);
+              setBox({ x: position.x, y: position.y, w: newW, h: newH });
+              triggerAreaSelect(position.x, position.y, newW, newH);
+            }}
+            resizeHandleClasses={{
+              bottomRight: "bg-aurora-magenta w-3 h-3 rounded-full shadow-lg right-[-6px] bottom-[-6px]",
+              bottomLeft: "bg-aurora-magenta w-3 h-3 rounded-full shadow-lg left-[-6px] bottom-[-6px]",
+              topRight: "bg-aurora-magenta w-3 h-3 rounded-full shadow-lg right-[-6px] top-[-6px]",
+              topLeft: "bg-aurora-magenta w-3 h-3 rounded-full shadow-lg left-[-6px] top-[-6px]",
+            }}
+          />
+        )}
+
+        {/* Visual Drawing Box (while creating) */}
+        {isDrawing && drawStart && drawCurrent && (
+          <div
+            className="absolute border border-aurora-magenta bg-aurora-magenta/10 pointer-events-none z-30 shadow-[0_0_15px_rgba(244,114,182,0.4)]"
+            style={{
+              left: Math.min(drawStart.x, drawCurrent.x),
+              top: Math.min(drawStart.y, drawCurrent.y),
+              width: Math.abs(drawCurrent.x - drawStart.x),
+              height: Math.abs(drawCurrent.y - drawStart.y),
+            }}
+          />
+        )}
+
+        <div className="absolute inset-0 pointer-events-none bg-[#050811] flex items-center justify-center">
           {afterImageUrl && !afterError ? (
             <img 
               src={afterImageUrl} 
@@ -88,18 +203,15 @@ export default function BeforeAfterSlider({
               onError={() => setAfterError(true)} 
             />
           ) : (
-            <SatelliteTile
-              seed={districtId}
-              label="after"
-              waterValue={water?.after_value ?? 0}
-              greenPct={green?.after_value ?? 0}
-              heatValue={heat?.after_value ?? 0}
-            />
+            <div className="flex flex-col items-center justify-center text-signal/50 font-mono text-[10px]">
+              <div className="w-8 h-8 border-2 border-signal/20 border-t-signal rounded-full animate-spin mb-2" />
+              <span>AWAITING {afterLabel} TELEMETRY</span>
+            </div>
           )}
         </div>
 
         <div
-          className="absolute inset-0 overflow-hidden"
+          className="absolute inset-0 overflow-hidden pointer-events-none bg-[#050811] flex items-center justify-center"
           style={{ clipPath: `inset(0 ${100 - split}% 0 0)` }}
         >
           {beforeImageUrl && !beforeError ? (
@@ -110,25 +222,22 @@ export default function BeforeAfterSlider({
               onError={() => setBeforeError(true)} 
             />
           ) : (
-            <SatelliteTile
-              seed={districtId}
-              label="before"
-              waterValue={water?.before_value ?? 0}
-              greenPct={green?.before_value ?? 0}
-              heatValue={heat?.before_value ?? 0}
-            />
+            <div className="flex flex-col items-center justify-center text-ink-muted/50 font-mono text-[10px]">
+              <div className="w-8 h-8 border-2 border-ink-muted/20 border-t-ink-muted rounded-full animate-spin mb-2" />
+              <span>AWAITING {beforeLabel} TELEMETRY</span>
+            </div>
           )}
         </div>
 
         <div
-          className="absolute top-0 bottom-0 w-0.5 bg-signal shadow-[0_0_12px_rgba(34,211,238,0.9)]"
+          className="absolute top-0 bottom-0 w-0.5 bg-signal shadow-[0_0_12px_rgba(34,211,238,0.9)] pointer-events-none z-10"
           style={{ left: `${split}%` }}
         />
 
-        <span className="absolute top-3 left-3 font-mono text-xs text-ink bg-space/80 px-2 py-1 rounded-md backdrop-blur border border-signal/20">
+        <span className="absolute top-3 left-3 font-mono text-xs text-ink bg-space/80 px-2 py-1 rounded-md backdrop-blur border border-signal/20 pointer-events-none z-10">
           {beforeLabel}
         </span>
-        <span className="absolute top-3 right-3 font-mono text-xs text-ink bg-space/80 px-2 py-1 rounded-md backdrop-blur border border-signal/20">
+        <span className="absolute top-3 right-3 font-mono text-xs text-ink bg-space/80 px-2 py-1 rounded-md backdrop-blur border border-signal/20 pointer-events-none z-10">
           {afterLabel}
         </span>
       </div>

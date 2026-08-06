@@ -7,8 +7,6 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import dynamic from 'next/dynamic';
 
-const LocalPoiMap = dynamic(() => import('@/components/LocalPoiMap'), { ssr: false });
-
 export default function DistrictReportPage({ params }: { params: { id: string } }) {
   const [data, setData] = useState<DistrictDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -177,15 +175,6 @@ export default function DistrictReportPage({ params }: { params: { id: string } 
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Local POI Analysis Map */}
-        <div className="mt-8 bg-[#0b1021] border border-cyan-900/30 p-6 rounded-xl">
-          <LocalPoiMap 
-            districtLat={data.lat} 
-            districtLon={data.lon} 
-            districtName={data.name} 
-          />
         </div>
       </div>
 

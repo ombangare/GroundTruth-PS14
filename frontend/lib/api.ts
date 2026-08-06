@@ -33,7 +33,7 @@ export interface DistrictDetail extends Omit<DistrictSummary, "indicator_summary
   images: { before: string | null; after: string | null };
 }
 
-async function getAuthHeaders() {
+async function getAuthHeaders(): Promise<Record<string, string>> {
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.access_token) {
     return { Authorization: `Bearer ${session.access_token}` };

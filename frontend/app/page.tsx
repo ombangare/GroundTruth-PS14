@@ -21,6 +21,7 @@ const DistrictMap = dynamic(() => import("@/components/DistrictMap"), {
 });
 
 const PoiChartPanel = dynamic(() => import("@/components/PoiChartPanel"), { ssr: false });
+const MLAnalysisPanel = dynamic(() => import("@/components/MLAnalysisPanel"), { ssr: false });
 const Globe3D = dynamic(() => import("@/components/Globe3D"), { ssr: false });
 
 export default function Home() {
@@ -30,6 +31,7 @@ export default function Home() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [poiCoords, setPoiCoords] = useState<{lat: number, lon: number} | null>(null);
+  const [areaBounds, setAreaBounds] = useState<{minLat: number, maxLat: number, minLon: number, maxLon: number} | null>(null);
   const [districtFilter, setDistrictFilter] = useState("");
   const [sortMode, setSortMode] = useState<"az" | "severity">("az");
   const [loading, setLoading] = useState(true);
@@ -78,6 +80,7 @@ export default function Home() {
     setDetailLoading(true);
     setDetailError(null);
     setPoiCoords(null); // Reset POI chart when district changes
+    setAreaBounds(null); // Reset ML Area chart when district changes
     fetchDistrict(selectedId)
       .then((d) => {
         setDetail(d);
@@ -242,10 +245,14 @@ export default function Home() {
                 indicators={detail.indicators}
                 beforeImageUrl={detail.images?.before}
                 afterImageUrl={detail.images?.after}
-                onImageClick={(lat, lon) => setPoiCoords({ lat, lon })}
+                onImageClick={(lat, lon) => { setPoiCoords({ lat, lon }); setAreaBounds(null); }}
+                onAreaSelect={(bounds) => { setAreaBounds(bounds); setPoiCoords(null); }}
               />
               {poiCoords && (
                 <PoiChartPanel lat={poiCoords.lat} lon={poiCoords.lon} />
+              )}
+              {areaBounds && (
+                <MLAnalysisPanel bounds={areaBounds} />
               )}
             </div>
           )}
