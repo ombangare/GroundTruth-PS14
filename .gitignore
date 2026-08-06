@@ -16,3 +16,4 @@ backend/__pycache__/
 backend/.env
 backend/data/cache/
 .DS_Store
+backend/
