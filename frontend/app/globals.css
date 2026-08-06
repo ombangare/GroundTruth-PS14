@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  background-color: #05070d;
+  color: #f4f1fb;
+}
+
+/* Base backdrop: near-black, NOT a purple gradient wash. A moving grid +
+   corner glows read as "mission control" rather than "generic SaaS blur." */
+.aurora-bg {
+  position: relative;
+  background-color: #05070d;
+  background-image:
+    linear-gradient(rgba(34, 211, 238, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.055) 1px, transparent 1px);
+  background-size: 42px 42px;
+  animation: grid-drift 40s linear infinite;
+}
+
+@keyframes grid-drift {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 42px 84px, 84px 42px; }
+}
+
+/* Sparse corner glows only — small, sharp-ish, not soft blobs filling the page */
+.aurora-bg::before,
+.aurora-bg::after {
+  content: "";
+  position: fixed;
+  border-radius: 9999px;
+  filter: blur(110px);
+  opacity: 0.22;
+  pointer-events: none;
+  z-index: 0;
+}
+.aurora-bg::before {
+  width: 30vw; height: 30vw; top: -10vw; right: -6vw;
+  background: radial-gradient(circle, #22d3ee, transparent 70%);
+}
+.aurora-bg::after {
+  width: 24vw; height: 24vw; bottom: -8vw; left: -6vw;
+  background: radial-gradient(circle, #f472b6, transparent 70%);
+}
+
+/* Horizontal scan-line sweep — the signature motif, reinforces "being scanned by satellite" */
+.scan-sweep {
+  position: fixed;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.9), transparent);
+  box-shadow: 0 0 20px 2px rgba(34, 211, 238, 0.6);
+  z-index: 1;
+  pointer-events: none;
+  animation: sweep 7s linear infinite;
+}
+@keyframes sweep {
+  0% { top: -2px; opacity: 0; }
+  5% { opacity: 1; }
+  95% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* HUD panel: angular clipped corners instead of fully rounded glass cards —
+   reads as instrument-panel, not "rounded gradient card #4213". */
+.hud-panel {
+  position: relative;
+  background: rgba(10, 14, 26, 0.72);
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  clip-path: polygon(0 10px, 10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.hud-panel:hover {
+  border-color: rgba(34, 211, 238, 0.5);
+  transition: border-color 0.2s ease;
+}
+
+/* Corner bracket accents — small sci-fi HUD detail on key panels */
+.hud-corners {
+  position: relative;
+}
+.hud-corners::before,
+.hud-corners::after {
+  content: "";
+  position: absolute;
+  width: 14px; height: 14px;
+  border-color: #22d3ee;
+  opacity: 0.7;
+  z-index: 2;
+}
+.hud-corners::before {
+  top: -1px; left: -1px;
+  border-top: 2px solid; border-left: 2px solid;
+}
+.hud-corners::after {
+  bottom: -1px; right: -1px;
+  border-bottom: 2px solid; border-right: 2px solid;
+}
+
+.glow-ring {
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.4), 0 0 24px rgba(34, 211, 238, 0.25);
+}
+
+.text-aurora-gradient {
+  background: linear-gradient(90deg, #22d3ee, #a855f7 55%, #f472b6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.orbit-line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.7), rgba(168, 85, 247, 0.5), transparent);
+}
+
+/* Ticker bar — small marquee of "live" stats, reinforces instrument-panel feel */
+.ticker-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: ticker 22s linear infinite;
+}
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #05070d; }
+::-webkit-scrollbar-thumb { background: #1b2536; border-radius: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-bg, .scan-sweep, .ticker-track { animation: none; }
+}
