@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { fetchDistricts, fetchDistrict, type DistrictSummary, type DistrictDetail } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
+import LoginModal from "@/components/LoginModal";
+import { LogIn, LogOut, User } from "lucide-react";
 import IndicatorCard from "@/components/IndicatorCard";
 import BeforeAfterSlider from "@/components/BeforeAfterSlider";
 
@@ -28,6 +31,34 @@ export default function Home() {
   const [sortMode, setSortMode] = useState<"az" | "severity">("az");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Auth State
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check active session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUserRole(session.user.app_metadata?.role || "viewer");
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUserRole(session.user.app_metadata?.role || "viewer");
+      } else {
+        setUserRole(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
   useEffect(() => {
     fetchDistricts()
@@ -86,9 +117,29 @@ export default function Home() {
               GroundTruth
             </h1>
           </div>
-          <div className="hidden md:flex flex-col items-end font-mono text-xs text-ink-muted">
-            <span>SOURCE: Sentinel-2 / Bhuvan / Earth Engine</span>
-            <span>ENGINE: NDWI · NDVI · NDBI</span>
+          <div className="flex items-center gap-4">
+            <div className="hidden md:flex flex-col items-end font-mono text-xs text-ink-muted mr-4 border-r border-space-line pr-4">
+              <span>SOURCE: Sentinel-2 / Bhuvan / Earth Engine</span>
+              <span>ENGINE: NDWI · NDVI · NDBI</span>
+            </div>
+            
+            {userRole ? (
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full bg-signal/10 border border-signal/30 text-signal">
+                  <User size={12} /> {userRole}
+                </span>
+                <button onClick={handleLogout} className="text-ink-muted hover:text-bad transition-colors" title="Sign out">
+                  <LogOut size={18} />
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setIsLoginModalOpen(true)}
+                className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest px-4 py-2 rounded border border-space-line text-ink-muted hover:text-ink hover:border-signal/50 transition-colors"
+              >
+                <LogIn size={14} /> Access Node
+              </button>
+            )}
           </div>
         </div>
 
@@ -303,6 +354,13 @@ export default function Home() {
       <footer className="px-6 md:px-10 py-5 text-center text-ink-muted text-xs font-mono">
         Built for SDG tracking · India-wide · Powered by Sentinel-2 &amp; Google Earth Engine
       </footer>
+
+      {isLoginModalOpen && (
+        <LoginModal 
+          onClose={() => setIsLoginModalOpen(false)} 
+          onLoginSuccess={(role) => setUserRole(role)}
+        />
+      )}
     </main>
   );
 }
