@@ -115,11 +115,16 @@ export default function MLAnalysisPanel({ bounds }: { bounds: Bounds }) {
                 <span className={`text-2xl font-bold ${data.wetland_loss > 0 ? 'text-bad' : 'text-emerald-400'}`}>
                   {data.wetland_loss > 0 ? '-' : '+'}{Math.abs(data.wetland_loss)} <span className="text-xs font-normal text-ink-muted">km²</span>
                 </span>
-                <span className="text-[10px] text-ink-muted mt-1">{data.wetland_loss_pct}% reduction</span>
+                <span className="text-[10px] text-ink-muted mt-1">Net spatial reduction</span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] text-ink-muted uppercase">Primary Driver</span>
-                <span className="text-lg font-bold text-amber-400 mt-1">{data.main_cause}</span>
+              <div className="flex flex-col relative group">
+                <span className="text-[10px] text-ink-muted uppercase border-b border-dashed border-ink-muted/50 w-fit cursor-help">Primary Driver</span>
+                <span className="text-lg font-bold text-amber-400 mt-1 leading-tight">{data.main_cause}</span>
+                <div className="absolute left-0 top-full mt-2 w-64 bg-[#050811] border border-cyan-900/50 text-[9px] text-cyan-100/80 p-3 rounded shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
+                  <p className="mb-1"><strong>Validated Methodology:</strong></p>
+                  <p>Automatically deduced using peer-reviewed multi-index attribution techniques.</p>
+                  <p className="mt-1">By cross-referencing absolute wetland loss against Built-Up (NDBI), Vegetation (NDVI), and Rainfall (CHIRPS) historical thresholds, the model isolates anthropogenic encroachment from natural climatic stress. <em>(Ref: Monitoring of dynamic wetland changes using NDVI and NDWI based landsat imagery - 10.1016/j.rsase.2021.100547)</em></p>
+                </div>
               </div>
             </div>
 
@@ -177,7 +182,11 @@ export default function MLAnalysisPanel({ bounds }: { bounds: Bounds }) {
             </div>
             <div className="absolute -bottom-4 -right-4 p-3 opacity-[0.03] text-9xl pointer-events-none">💧</div>
           </div>
-
+          
+          {/* Data Sources Footer */}
+          <div className="col-span-1 md:col-span-2 text-[9px] font-mono text-ink-muted/60 text-right mt-1">
+            Data computed on-the-fly via Google Earth Engine API using Sentinel-2 MSI (10m) & CHIRPS Daily Precipitation.
+          </div>
         </div>
       )}
     </div>

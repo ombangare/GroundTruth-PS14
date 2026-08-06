@@ -165,6 +165,10 @@ export default function ForestAnalysisPanel({ bounds }: { bounds: Bounds }) {
             </div>
           </div>
 
+          {/* Data Sources Footer */}
+          <div className="col-span-1 md:col-span-2 text-[9px] font-mono text-ink-muted/60 text-right mt-1">
+            Data computed on-the-fly via Google Earth Engine API using Sentinel-2 MSI (10m) & ESA WorldCover.
+          </div>
         </div>
       )}
     </div>

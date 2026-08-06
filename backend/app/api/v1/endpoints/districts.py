@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query, BackgroundTasks, HTTPException
 from typing import Optional
 from pydantic import BaseModel
-from app.services import district_service
+from app.services import district_service, gee_service, gee_wetlands, gee_forests, gee_degradation, gee_urban_sprawl
 
 class PointRequest(BaseModel):
     lat: float
@@ -37,6 +37,36 @@ def analyze_wetland_area(payload: AreaRequest):
 def analyze_forest_area(payload: AreaRequest):
     from app.services import gee_forests
     res = gee_forests.analyze_forest_cover(
+        payload.minLat, 
+        payload.maxLat, 
+        payload.minLon, 
+        payload.maxLon, 
+        payload.startYear, 
+        payload.endYear
+    )
+    if "error" in res and res["error"] != "Earth Engine not initialized":
+        raise HTTPException(status_code=500, detail=res["error"])
+    return res
+
+@router.post("/analyze-land-degradation")
+def analyze_degradation_area(payload: AreaRequest):
+    from app.services import gee_degradation
+    res = gee_degradation.analyze_land_degradation(
+        payload.minLat, 
+        payload.maxLat, 
+        payload.minLon, 
+        payload.maxLon, 
+        payload.startYear, 
+        payload.endYear
+    )
+    if "error" in res and res["error"] != "Earth Engine not initialized":
+        raise HTTPException(status_code=500, detail=res["error"])
+    return res
+
+@router.post("/analyze-urban-sprawl")
+def analyze_sprawl_area(payload: AreaRequest):
+    from app.services import gee_urban_sprawl
+    res = gee_urban_sprawl.analyze_urban_sprawl(
         payload.minLat, 
         payload.maxLat, 
         payload.minLon, 

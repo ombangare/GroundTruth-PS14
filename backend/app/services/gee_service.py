@@ -144,9 +144,6 @@ def get_district_images(lat: float, lon: float, before_year: str, after_year: st
     def fetch_b64(year):
         try:
             url = get_thumbnail_url(aoi, year)
-            r = requests.get(url, timeout=15)
-            if r.status_code == 200:
-                return "data:image/png;base64," + base64.b64encode(r.content).decode("utf-8")
             return url
         except:
             return None

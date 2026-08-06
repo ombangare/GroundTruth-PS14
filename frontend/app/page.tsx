@@ -23,6 +23,8 @@ const DistrictMap = dynamic(() => import("@/components/DistrictMap"), {
 const PoiChartPanel = dynamic(() => import("@/components/PoiChartPanel"), { ssr: false });
 const MLAnalysisPanel = dynamic(() => import("@/components/MLAnalysisPanel"), { ssr: false });
 const ForestAnalysisPanel = dynamic(() => import("@/components/ForestAnalysisPanel"), { ssr: false });
+const DegradationAnalysisPanel = dynamic(() => import("@/components/DegradationAnalysisPanel"), { ssr: false });
+const UrbanSprawlAnalysisPanel = dynamic(() => import("@/components/UrbanSprawlAnalysisPanel"), { ssr: false });
 const Globe3D = dynamic(() => import("@/components/Globe3D"), { ssr: false });
 
 export default function Home() {
@@ -256,6 +258,8 @@ export default function Home() {
                 <div className="mt-8 grid grid-cols-1 gap-8">
                   <MLAnalysisPanel bounds={areaBounds} />
                   <ForestAnalysisPanel bounds={areaBounds} />
+                  <DegradationAnalysisPanel bbox={areaBounds} startYear="2018" endYear="2024" />
+                  <UrbanSprawlAnalysisPanel bbox={areaBounds} startYear="2018" endYear="2020" />
                 </div>
               )}
             </div>

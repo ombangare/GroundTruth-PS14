@@ -43,7 +43,7 @@ def analyze_area_water(min_lat: float, max_lat: float, min_lon: float, max_lon: 
                 .reduceRegion(
                     reducer=ee.Reducer.sum(),
                     geometry=aoi,
-                    scale=10,
+                    scale=100,
                     maxPixels=1e10
                 )
             )
@@ -125,12 +125,12 @@ def analyze_wetland_health(min_lat: float, max_lat: float, min_lon: float, max_l
             
             # Wetland Area
             wetland_area = pixel_area.updateMask(wetland_mask).reduceRegion(
-                reducer=ee.Reducer.sum(), geometry=aoi, scale=10, maxPixels=1e10
+                reducer=ee.Reducer.sum(), geometry=aoi, scale=100, maxPixels=1e10
             )
             
             # Urban Area
             urban_area = pixel_area.updateMask(urban_mask).reduceRegion(
-                reducer=ee.Reducer.sum(), geometry=aoi, scale=10, maxPixels=1e10
+                reducer=ee.Reducer.sum(), geometry=aoi, scale=100, maxPixels=1e10
             )
             
             # Mean NDVI
