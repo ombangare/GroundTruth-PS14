@@ -10,82 +10,172 @@ interface Bounds {
 }
 
 export default function MLAnalysisPanel({ bounds }: { bounds: Bounds }) {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [startYear, setStartYear] = useState("2017");
+  const [endYear, setEndYear] = useState("2024");
   
-  useEffect(() => {
-    // Mocking an ML analysis API call since the backend routes don't exist yet
+  const fetchAnalysis = async () => {
     setLoading(true);
-    const timer = setTimeout(() => {
+    setError(null);
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
+      const res = await fetch(`${baseUrl}/api/districts/analyze-wetland-health`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          minLat: bounds.minLat,
+          maxLat: bounds.maxLat,
+          minLon: bounds.minLon,
+          maxLon: bounds.maxLon,
+          startYear: startYear,
+          endYear: endYear
+        })
+      });
+      const json = await res.json();
+
+      if (json.error) {
+        setError(json.error);
+      } else {
+        setData(json);
+      }
+    } catch (err) {
+      setError("Failed to communicate with Earth Engine.");
+    } finally {
       setLoading(false);
-    }, 2500); // 2.5s simulated processing time
-    
-    return () => clearTimeout(timer);
-  }, [bounds]);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalysis();
+  }, [bounds, startYear, endYear]);
+
+  const years = ["2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024"];
+
+
 
   return (
     <div className="hud-panel p-6 border-aurora-magenta/30 bg-[#0b1021]">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
         <div>
-          <h3 className="font-display font-bold text-lg text-aurora-magenta flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-aurora-magenta animate-pulse"></span>
-            Area ML Analysis (Bounding Box)
+          <h3 className="font-display font-bold text-lg text-emerald-400 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            Wetland Health Module (Area Analysis)
           </h3>
-          <p className="font-mono text-[10px] text-ink-muted">
+          <p className="font-mono text-[10px] text-ink-muted mt-1">
             Bounds: [{bounds.minLat.toFixed(4)}, {bounds.minLon.toFixed(4)}] to [{bounds.maxLat.toFixed(4)}, {bounds.maxLon.toFixed(4)}]
           </p>
         </div>
-        <span className="px-2 py-1 bg-aurora-magenta/10 border border-aurora-magenta/30 text-aurora-magenta text-[9px] uppercase tracking-wider rounded">
-          Deep Learning Cluster
-        </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-[#050811] p-1.5 rounded-md border border-space-line">
+            <select 
+              value={startYear} 
+              onChange={(e) => setStartYear(e.target.value)}
+              className="bg-transparent text-signal text-xs font-mono outline-none cursor-pointer"
+            >
+              {years.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <span className="text-ink-muted text-[10px]">→</span>
+            <select 
+              value={endYear} 
+              onChange={(e) => setEndYear(e.target.value)}
+              className="bg-transparent text-emerald-400 text-xs font-mono outline-none cursor-pointer"
+            >
+              {years.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+          <span className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[9px] uppercase tracking-wider rounded">
+            Earth Engine Live
+          </span>
+        </div>
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-8 font-mono text-xs text-aurora-magenta">
-          <div className="animate-spin w-6 h-6 border-2 border-aurora-magenta border-t-transparent rounded-full mb-3" />
-          <span>Executing neural networks on selected spatial bounds...</span>
-          <span className="text-[9px] text-ink-muted mt-1 opacity-70">Computing hydrological shrinkage vectors...</span>
+        <div className="flex flex-col items-center justify-center py-12 font-mono text-xs text-emerald-400">
+          <div className="animate-spin w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full mb-3" />
+          <span>Extracting Random Forest wetland polygons & intersecting climatic features...</span>
+          <span className="text-[9px] text-ink-muted mt-1 opacity-70">Processing Sentinel-2 & CHIRPS datasets</span>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+      ) : error ? (
+        <div className="p-4 bg-bad/10 text-bad font-mono text-sm border-bad/50 rounded-lg">{error}</div>
+      ) : data && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
           
-          {/* Flood Indicator */}
-          <div className="flex flex-col gap-2 border border-space-line p-4 rounded-lg bg-[#050811] shadow-xl">
+          {/* Main Stats Card */}
+          <div className="flex flex-col gap-3 border border-space-line p-4 rounded-lg bg-[#050811] shadow-xl md:col-span-2">
             <div className="flex items-center justify-between border-b border-space-line pb-2">
-              <span className="font-bold text-sm text-cyan-400">Flood Susceptibility Index</span>
-              <span className="text-xl">🌊</span>
+              <span className="font-bold text-sm text-blue-400">Wetland Shrinkage & Causes</span>
+              <span className="text-xl">🦆</span>
             </div>
-            <div className="font-mono text-[11px] text-gray-400 mt-1">
-              Topographic depression analysis combined with historical SAR inundation maps indicates the vulnerability of this specific bounded region.
-            </div>
-            <div className="mt-3">
-              <div className="flex justify-between text-[11px] font-mono mb-1">
-                <span className="text-rose-400">High Risk (78%)</span>
+            
+            <div className="grid grid-cols-2 gap-4 mt-2 font-mono">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-ink-muted uppercase">Total Loss</span>
+                <span className={`text-2xl font-bold ${data.wetland_loss > 0 ? 'text-bad' : 'text-emerald-400'}`}>
+                  {data.wetland_loss > 0 ? '-' : '+'}{Math.abs(data.wetland_loss)} <span className="text-xs font-normal text-ink-muted">km²</span>
+                </span>
+                <span className="text-[10px] text-ink-muted mt-1">{data.wetland_loss_pct}% reduction</span>
               </div>
-              <div className="w-full bg-gray-900 h-2 rounded-full overflow-hidden">
-                <div className="bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-500 h-full w-[78%]" />
+              <div className="flex flex-col">
+                <span className="text-[10px] text-ink-muted uppercase">Primary Driver</span>
+                <span className="text-lg font-bold text-amber-400 mt-1">{data.main_cause}</span>
               </div>
             </div>
-            <div className="mt-2 text-[10px] font-mono text-ink-muted">
-              Model: <span className="text-cyan-600">HydroSAR-v4</span> | Confidence: 92%
+
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3 mt-4 pt-4 border-t border-space-line/50 font-mono text-xs">
+              
+              <div className="flex justify-between items-center">
+                <span className="text-ink-muted">Rainfall</span>
+                <div className="flex gap-2">
+                  <span className="text-ink line-through opacity-50">{data.rain_start}</span>
+                  <span className="text-cyan-400">{data.rain_end} mm</span>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-ink-muted">Built-up Area</span>
+                <div className="flex gap-2">
+                  <span className="text-ink line-through opacity-50">{data.urban_start}</span>
+                  <span className="text-rose-400">{data.urban_end} km²</span>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-ink-muted">Vegetation (NDVI)</span>
+                <div className="flex gap-2">
+                  <span className="text-ink line-through opacity-50">{data.ndvi_start}</span>
+                  <span className={`${data.ndvi_end < data.ndvi_start ? 'text-bad' : 'text-emerald-400'}`}>{data.ndvi_end}</span>
+                </div>
+              </div>
+
             </div>
           </div>
 
-          {/* Water Shrinkage */}
-          <div className="flex flex-col gap-2 border border-space-line p-4 rounded-lg bg-[#050811] shadow-xl">
-            <div className="flex items-center justify-between border-b border-space-line pb-2">
-              <span className="font-bold text-sm text-blue-400">Decadal Water Shrinkage</span>
-              <span className="text-xl">🏜️</span>
+          {/* SDG 6.6.1 Target Indicator Card */}
+          <div className="flex flex-col gap-2 border border-space-line p-4 rounded-lg bg-[#050811] shadow-xl justify-between relative overflow-hidden">
+            <div>
+              <div className="flex items-center justify-between border-b border-space-line pb-2 mb-3">
+                <span className="font-bold text-sm text-cyan-400 z-10">SDG 6.6.1 Indicator</span>
+                <span className="text-xl z-10">🎯</span>
+              </div>
+              <div className="font-mono text-[11px] text-gray-400 mt-1 z-10 relative">
+                Change in the spatial extent of water-related ecosystems over time.
+              </div>
             </div>
-            <div className="font-mono text-[11px] text-gray-400 mt-1">
-              Time-series anomaly detection on surface water area inside the bounding box over the last 120 months.
+            
+            <div className="flex flex-col items-center justify-center py-4 relative z-10">
+              <div className={`text-5xl font-display font-bold mb-1 ${data.wetland_loss > 0 ? 'text-bad' : 'text-emerald-400'}`}>
+                {data.wetland_loss > 0 ? '-' : '+'}{Math.abs(data.wetland_loss)} km²
+              </div>
+              <div className="text-[10px] font-mono text-ink-muted mb-4 uppercase tracking-wider">
+                Recorded Spatial Change
+              </div>
+              <div className={`font-mono text-xs px-3 py-1 rounded border ${data.wetland_loss > 0 ? 'bg-bad/10 border-bad/30 text-bad' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'}`}>
+                {data.wetland_loss > 0 ? 'Negative trend detected' : 'Positive trend detected'}
+              </div>
             </div>
-            <div className="mt-3 flex items-end gap-3">
-              <span className="text-3xl font-display font-bold text-bad">-14.2%</span>
-              <span className="text-[11px] font-mono text-ink-muted mb-1">surface area reduction</span>
-            </div>
-            <div className="mt-2 text-[10px] font-mono text-ink-muted">
-              Model: <span className="text-blue-600">NDWI-Temporal-LSTM</span> | Trajectory: <span className="text-bad">Declining</span>
-            </div>
+            <div className="absolute -bottom-4 -right-4 p-3 opacity-[0.03] text-9xl pointer-events-none">💧</div>
           </div>
 
         </div>

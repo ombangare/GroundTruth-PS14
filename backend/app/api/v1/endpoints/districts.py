@@ -8,7 +8,45 @@ class PointRequest(BaseModel):
     lon: float
     years: Optional[list[str]] = None
 
+class AreaRequest(BaseModel):
+    minLat: float
+    maxLat: float
+    minLon: float
+    maxLon: float
+    startYear: Optional[str] = "2018"
+    endYear: Optional[str] = "2024"
+
 router = APIRouter(prefix="/api/districts", tags=["districts"])
+
+@router.post("/analyze-wetland-health")
+def analyze_wetland_area(payload: AreaRequest):
+    from app.services import gee_wetlands
+    res = gee_wetlands.analyze_wetland_health(
+        payload.minLat, 
+        payload.maxLat, 
+        payload.minLon, 
+        payload.maxLon, 
+        payload.startYear, 
+        payload.endYear
+    )
+    if "error" in res and res["error"] != "Earth Engine not initialized":
+        raise HTTPException(status_code=500, detail=res["error"])
+    return res
+
+@router.post("/analyze-forest-cover")
+def analyze_forest_area(payload: AreaRequest):
+    from app.services import gee_forests
+    res = gee_forests.analyze_forest_cover(
+        payload.minLat, 
+        payload.maxLat, 
+        payload.minLon, 
+        payload.maxLon, 
+        payload.startYear, 
+        payload.endYear
+    )
+    if "error" in res and res["error"] != "Earth Engine not initialized":
+        raise HTTPException(status_code=500, detail=res["error"])
+    return res
 
 @router.post("/analyze-point")
 def analyze_map_click(payload: PointRequest):

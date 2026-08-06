@@ -60,13 +60,13 @@ def _get_district_metadata(district_id: str) -> dict | None:
 VERDICT_TEMPLATES = {
     "water": {
         "good": "Water bodies in {name} have stayed stable since {before}.",
-        "warn": "Water bodies in {name} have shrunk by {pct}% since {before} — worth monitoring.",
-        "bad": "Water bodies in {name} have shrunk by {pct}% since {before} — significant water stress.",
+        "warn": "Water bodies in {name} have shrunk by {diff} km² since {before} — worth monitoring.",
+        "bad": "Water bodies in {name} have shrunk by {diff} km² since {before} — significant water stress.",
     },
     "green_cover": {
         "good": "Green cover in {name} is holding steady since {before}.",
-        "warn": "Green cover in {name} has declined by {pct}% since {before}.",
-        "bad": "Green cover in {name} has dropped sharply by {pct}% since {before} — urgent attention needed.",
+        "warn": "Green cover in {name} has declined by {diff} km² since {before}.",
+        "bad": "Green cover in {name} has dropped sharply by {diff} km² since {before} — urgent attention needed.",
     },
     "urban_heat": {
         "good": "Urban heat in {name} is under control.",
@@ -110,8 +110,9 @@ def _build_indicator_result(indicator_key: str, indicator: dict, district_name: 
     after_val = indicator[after_key]
     pct = _pct_change(before_val, after_val)
     severity = _severity(indicator_key, pct)
+    diff = round(abs(after_val - before_val), 2)
     verdict = VERDICT_TEMPLATES[indicator_key][severity].format(
-        name=district_name, pct=abs(pct), before=period_before
+        name=district_name, diff=diff, before=period_before
     )
 
     return {
@@ -120,7 +121,7 @@ def _build_indicator_result(indicator_key: str, indicator: dict, district_name: 
         "index_used": indicator["index_used"],
         "before_value": before_val,
         "after_value": after_val,
-        "pct_change": pct,
+        "change_value": round(after_val - before_val, 2),
         "severity": severity,
         "verdict": verdict,
     }
@@ -236,7 +237,7 @@ def _get_indicators_for(d: dict, use_live: bool, background_tasks = None) -> dic
     # 1. Cache Hit: Return cached database telemetry
     if cached is not None:
         d["_data_source"] = "database"
-        d["_cached_images"] = {"before": None, "after": None}
+        d["_cached_images"] = cached.get("images") or {"before": None, "after": None}
         return cached["indicators"]
 
     # 2. Map list view: Return pending without computing
@@ -288,9 +289,9 @@ def _get_indicators_for(d: dict, use_live: bool, background_tasks = None) -> dic
             "index_used": "NDWI",
             "before_value": 100.0,
             "after_value": 91.6,
-            "pct_change": -8.4,
+            "change_value": -8.4,
             "severity": "warn",
-            "verdict": f"Water bodies in {d['name']} have shrunk by 8.4% since {d['period_before']} – worth monitoring."
+            "verdict": f"Water bodies in {d['name']} have shrunk by 8.4 km² since {d['period_before']} – worth monitoring."
         },
         "green_cover": {
             "sdg": "SDG 15",
@@ -298,19 +299,9 @@ def _get_indicators_for(d: dict, use_live: bool, background_tasks = None) -> dic
             "index_used": "NDVI",
             "before_value": 100.0,
             "after_value": 104.2,
-            "pct_change": 4.2,
+            "change_value": 4.2,
             "severity": "good",
             "verdict": f"Green cover in {d['name']} is holding steady since {d['period_before']}."
-        },
-        "urban_heat": {
-            "sdg": "SDG 11",
-            "label": "Built-Up Surface (NDBI)",
-            "index_used": "NDBI",
-            "before_value": 100.0,
-            "after_value": 112.1,
-            "pct_change": 12.1,
-            "severity": "bad",
-            "verdict": f"Urban heat island intensity in {d['name']} has surged by 12.1% since {d['period_before']} – heat mitigation needed."
         }
     }
 
@@ -339,18 +330,18 @@ def _build_climate_composite(indicator_results: dict, district_name: str, period
 
     total = len(severities)
     verdict = {
-        "bad": f"{district_name} shows a compounding climate-stress pattern — {declining} of {total} tracked indicators (water, vegetation, heat) have worsened since {period_before}.",
+        "bad": f"{district_name} shows a compounding climate-stress pattern — {declining} of {total} tracked indicators (water, vegetation) have worsened since {period_before}.",
         "warn": f"{district_name} shows an early climate-stress signal — {declining} of {total} tracked indicators have worsened since {period_before}.",
-        "good": f"{district_name}'s tracked indicators (water, vegetation, heat) have stayed broadly stable since {period_before} — no compounding climate-stress pattern detected.",
+        "good": f"{district_name}'s tracked indicators (water, vegetation) have stayed broadly stable since {period_before} — no compounding climate-stress pattern detected.",
     }[severity]
 
     return {
         "sdg": "SDG 13",
         "label": "Composite climate-stress signal",
-        "index_used": "Derived (NDWI+NDVI+NDBI trend)",
+        "index_used": "Derived (NDWI+NDVI trend)",
         "before_value": total - declining,
         "after_value": declining,
-        "pct_change": round((declining / total) * 100, 1) if total else 0,
+        "change_value": declining,
         "severity": severity,
         "verdict": verdict,
     }

@@ -138,7 +138,7 @@ export default function BeforeAfterSlider({
     <div className="hud-panel p-4">
       <div className="flex items-center justify-between mb-2">
         <p className="font-mono text-[10px] text-signal uppercase tracking-widest">
-          Before / After — {water?.index_used} · {green?.index_used} · {heat?.index_used}
+          Before / After — {water?.index_used} · {green?.index_used}
         </p>
         <span className="font-mono text-[10px] text-aurora-magenta animate-pulse">Draw area to analyze</span>
       </div>

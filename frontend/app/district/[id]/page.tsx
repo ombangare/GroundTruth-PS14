@@ -171,7 +171,7 @@ export default function DistrictReportPage({ params }: { params: { id: string } 
               <p className="text-sm text-gray-300 leading-relaxed">{ind.verdict}</p>
               <div className="pt-2 border-t border-gray-800/60 flex justify-between items-center text-xs font-mono text-gray-400">
                 <span>Index: <strong className="text-gray-200">{ind.index_used}</strong></span>
-                <span>Change: <strong className={ind.pct_change < 0 ? "text-rose-400" : "text-emerald-400"}>{ind.pct_change !== null ? `${ind.pct_change}%` : "N/A"}</strong></span>
+                <span>Change: <strong className={ind.change_value < 0 ? "text-rose-400" : "text-emerald-400"}>{ind.change_value !== null && ind.change_value !== undefined ? `${ind.change_value > 0 ? '+' : ''}${ind.change_value} km²` : "N/A"}</strong></span>
               </div>
             </div>
           ))}
@@ -235,8 +235,8 @@ export default function DistrictReportPage({ params }: { params: { id: string } 
                 <div className="flex justify-between items-start mb-2">
                   <h4 className="text-lg font-bold text-gray-900 font-sans">{ind.label}</h4>
                   <span className={`text-xs font-bold font-sans uppercase tracking-wider px-3 py-1 rounded ${
-                    ind.pct_change < 0 && key !== 'urban_heat' ? 'bg-rose-100 text-rose-800' : 
-                    ind.pct_change > 0 && key === 'urban_heat' ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
+                    ind.change_value < 0 ? 'bg-rose-100 text-rose-800' : 
+                    'bg-emerald-100 text-emerald-800'
                   }`}>{ind.severity}</span>
                 </div>
                 
@@ -244,8 +244,8 @@ export default function DistrictReportPage({ params }: { params: { id: string } 
                   <div className="bg-gray-100 px-3 py-1 rounded"><strong>Target:</strong> {ind.sdg}</div>
                   <div className="bg-gray-100 px-3 py-1 rounded"><strong>Satellite Index:</strong> {ind.index_used}</div>
                   <div className="bg-gray-100 px-3 py-1 rounded">
-                    <strong>Recorded Change:</strong> <span className={ind.pct_change < 0 ? "text-rose-700 font-bold" : "text-emerald-700 font-bold"}>
-                      {ind.pct_change !== null ? `${ind.pct_change > 0 ? '+' : ''}${ind.pct_change}%` : "Pending"}
+                    <strong>Recorded Change:</strong> <span className={ind.change_value < 0 ? "text-rose-700 font-bold" : "text-emerald-700 font-bold"}>
+                      {ind.change_value !== null && ind.change_value !== undefined ? `${ind.change_value > 0 ? '+' : ''}${ind.change_value} km²` : "Pending"}
                     </span>
                   </div>
                 </div>

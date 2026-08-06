@@ -22,6 +22,7 @@ const DistrictMap = dynamic(() => import("@/components/DistrictMap"), {
 
 const PoiChartPanel = dynamic(() => import("@/components/PoiChartPanel"), { ssr: false });
 const MLAnalysisPanel = dynamic(() => import("@/components/MLAnalysisPanel"), { ssr: false });
+const ForestAnalysisPanel = dynamic(() => import("@/components/ForestAnalysisPanel"), { ssr: false });
 const Globe3D = dynamic(() => import("@/components/Globe3D"), { ssr: false });
 
 export default function Home() {
@@ -252,7 +253,10 @@ export default function Home() {
                 <PoiChartPanel lat={poiCoords.lat} lon={poiCoords.lon} />
               )}
               {areaBounds && (
-                <MLAnalysisPanel bounds={areaBounds} />
+                <div className="mt-8 grid grid-cols-1 gap-8">
+                  <MLAnalysisPanel bounds={areaBounds} />
+                  <ForestAnalysisPanel bounds={areaBounds} />
+                </div>
               )}
             </div>
           )}

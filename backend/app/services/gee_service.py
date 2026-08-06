@@ -97,16 +97,9 @@ def _compute_year_stats_ee(aoi, year: str):
         reducer=ee.Reducer.sum(), geometry=aoi, scale=1000, maxPixels=1e10
     ).get("nd")
     
-    # Heat Proxy (NDBI)
-    ndbi = image.normalizedDifference(["B11", "B8"])
-    mean_ndbi = ndbi.reduceRegion(
-        reducer=ee.Reducer.mean(), geometry=aoi, scale=1000, maxPixels=1e10
-    ).get("nd")
-    
     return ee.Dictionary({
         "water_sqkm": ee.Number(water_area).divide(1_000_000),
-        "green_area_sqm": ee.Number(green_area),
-        "mean_ndbi": ee.Number(mean_ndbi)
+        "green_area_sqm": ee.Number(green_area)
     })
 
 
@@ -189,14 +182,10 @@ def compute_district_indicators(lat: float, lon: float, before_year: str, after_
         data = results.get(period, {})
         water = data.get("water_sqkm") or 0
         green_sqm = data.get("green_area_sqm") or 0
-        green_pct = (green_sqm / total_area_sqm) * 100
-        ndbi = data.get("mean_ndbi") or 0
-        heat_proxy = max(0, (ndbi + 1) * 5)
-        
+        green_sqkm = green_sqm / 1_000_000
         return {
             "water": round(water, 2),
-            "green": round(green_pct, 1),
-            "heat": round(heat_proxy, 2)
+            "green": round(green_sqkm, 2)
         }
 
     before_stats = parse_stats("before")
@@ -214,16 +203,9 @@ def compute_district_indicators(lat: float, lon: float, before_year: str, after_
             "sdg": "SDG 15",
             "label": "Vegetation / green cover",
             "index_used": "NDVI",
-            "before_value_pct": before_stats["green"],
-            "after_value_pct": after_stats["green"],
-        },
-        "urban_heat": {
-            "sdg": "SDG 11",
-            "label": "Urban heat island intensity",
-            "index_used": "NDBI (proxy)",
-            "before_value_celsius": before_stats["heat"],
-            "after_value_celsius": after_stats["heat"],
-        },
+            "before_value_sqkm": before_stats["green"],
+            "after_value_sqkm": after_stats["green"],
+        }
     }
 
 def analyze_point_timeline(lat: float, lon: float, radius_meters: int = 500, years: list = None):
@@ -314,3 +296,5 @@ def analyze_point_timeline(lat: float, lon: float, radius_meters: int = 500, yea
             "timeline": [],
             "error": str(e)
         }
+
+# Wetland and Area Analysis functions have been moved to gee_wetlands.py
