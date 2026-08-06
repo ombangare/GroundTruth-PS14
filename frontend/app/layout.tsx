@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Sora, Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/lib/auth";
-import NavBar from "@/components/NavBar";
 
 const display = Sora({
   subsets: ["latin"],
@@ -40,12 +38,7 @@ export default function RootLayout({
       >
         <div className="grain" />
         <div className="scan-sweep" />
-        <div className="relative z-10">
-          <AuthProvider>
-            <NavBar />
-            {children}
-          </AuthProvider>
-        </div>
+        <div className="relative z-10">{children}</div>
       </body>
     </html>
   );

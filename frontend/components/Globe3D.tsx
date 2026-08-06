@@ -2,7 +2,7 @@
 
 import { useRef, useMemo, Suspense } from "react";
 import { Canvas, useFrame, useLoader } from "@react-three/fiber";
-import { Html, OrbitControls } from "@react-three/drei";
+import { OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 
 interface DistrictPoint {
@@ -21,7 +21,6 @@ const SEVERITY_COLOR: Record<string, string> = {
 };
 
 const TEX_BASE = "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets";
-const GLOBE_RADIUS = 1.6;
 
 function latLonToVec3(lat: number, lon: number, radius: number): [number, number, number] {
   const phi = (90 - lat) * (Math.PI / 180);
@@ -49,8 +48,8 @@ const atmosphereFragment = `
   }
 `;
 
-// Pin icon (teardrop + white circle) — same shape used on the 2D map, for
-// visual consistency between globe and map markers.
+// Pin-shaped marker texture (teardrop + white circle), drawn once per
+// color and cached — replaces the plain floating-sphere-with-ring look.
 const _pinTextureCache = new Map<string, THREE.CanvasTexture>();
 function getPinTexture(color: string): THREE.CanvasTexture {
   const cached = _pinTextureCache.get(color);
@@ -84,40 +83,53 @@ function getPinTexture(color: string): THREE.CanvasTexture {
   return texture;
 }
 
-/**
- * Shows ONLY the currently selected district — not all loaded districts.
- * Simpler, faster, and avoids the overlap/clutter problem entirely rather
- * than trying to manage it. The district name is attached directly next
- * to the pin (via Html anchored to the pin's 3D position), not a
- * separate fixed corner box.
- */
-function SelectedMarker({ point }: { point: DistrictPoint }) {
+function Marker({
+  position,
+  color,
+  onClick,
+  active,
+}: {
+  position: [number, number, number];
+  color: string;
+  onClick: () => void;
+  active: boolean;
+}) {
   const ref = useRef<THREE.Sprite>(null);
-  const texture = useMemo(() => getPinTexture(SEVERITY_COLOR[point.severity]), [point.severity]);
-  const position = latLonToVec3(point.lat, point.lon, GLOBE_RADIUS + 0.05);
+  const texture = useMemo(() => getPinTexture(color), [color]);
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
     const t = clock.getElapsedTime();
-    const pulse = 1.15 + Math.sin(t * 3) * 0.1;
-    ref.current.scale.set(0.15 * pulse, 0.19 * pulse, 1);
+    const pulse = active ? 1.35 + Math.sin(t * 3) * 0.15 : 1;
+    ref.current.scale.set(0.14 * pulse, 0.175 * pulse, 1);
   });
 
   return (
-    <group position={position}>
-      <sprite ref={ref} scale={[0.15, 0.19, 1]}>
-        <spriteMaterial map={texture} transparent depthTest={false} />
-      </sprite>
-      <Html distanceFactor={7} position={[0, 0.14, 0]} center>
-        <div className="pointer-events-none px-2 py-1 rounded bg-space/90 border border-signal/50 text-xs font-mono text-ink whitespace-nowrap">
-          📍 {point.name}
-        </div>
-      </Html>
-    </group>
+    <sprite
+      ref={ref}
+      position={position}
+      scale={[0.14, 0.175, 1]}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      onPointerOver={() => (document.body.style.cursor = "pointer")}
+      onPointerOut={() => (document.body.style.cursor = "auto")}
+    >
+      <spriteMaterial map={texture} transparent depthTest={false} />
+    </sprite>
   );
 }
 
-function EarthWithClouds({ selected }: { selected: DistrictPoint | null }) {
+function EarthWithClouds({
+  points,
+  selectedId,
+  onSelect,
+}: {
+  points: DistrictPoint[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
   const [dayMap, cloudsMap, lightsMap] = useLoader(THREE.TextureLoader, [
     `${TEX_BASE}/earth_atmos_2048.jpg`,
     `${TEX_BASE}/earth_clouds_1024.png`,
@@ -126,16 +138,19 @@ function EarthWithClouds({ selected }: { selected: DistrictPoint | null }) {
 
   const earthRef = useRef<THREE.Group>(null);
   const cloudsRef = useRef<THREE.Mesh>(null);
+  const rotationSpeed = points.length > 5 ? 0.006 : 0.06;
 
   useFrame((_, delta) => {
-    if (earthRef.current) earthRef.current.rotation.y += delta * 0.05;
-    if (cloudsRef.current) cloudsRef.current.rotation.y += delta * 0.075;
+    if (earthRef.current) earthRef.current.rotation.y += delta * rotationSpeed;
+    if (cloudsRef.current) cloudsRef.current.rotation.y += delta * (rotationSpeed + 0.025);
   });
+
+  const radius = 1.6;
 
   return (
     <group ref={earthRef}>
       <mesh>
-        <sphereGeometry args={[GLOBE_RADIUS, 48, 48]} />
+        <sphereGeometry args={[radius, 48, 48]} />
         <meshPhongMaterial
           map={dayMap}
           emissiveMap={lightsMap}
@@ -147,12 +162,12 @@ function EarthWithClouds({ selected }: { selected: DistrictPoint | null }) {
       </mesh>
 
       <mesh ref={cloudsRef}>
-        <sphereGeometry args={[GLOBE_RADIUS + 0.015, 48, 48]} />
+        <sphereGeometry args={[radius + 0.015, 48, 48]} />
         <meshStandardMaterial map={cloudsMap} alphaMap={cloudsMap} transparent opacity={0.35} depthWrite={false} />
       </mesh>
 
       <mesh scale={1.12}>
-        <sphereGeometry args={[GLOBE_RADIUS, 48, 48]} />
+        <sphereGeometry args={[radius, 48, 48]} />
         <shaderMaterial
           vertexShader={atmosphereVertex}
           fragmentShader={atmosphereFragment}
@@ -162,7 +177,15 @@ function EarthWithClouds({ selected }: { selected: DistrictPoint | null }) {
         />
       </mesh>
 
-      {selected && <SelectedMarker point={selected} />}
+      {points.map((p) => (
+        <Marker
+          key={p.id}
+          position={latLonToVec3(p.lat, p.lon, radius + 0.05)}
+          color={SEVERITY_COLOR[p.severity]}
+          active={p.id === selectedId}
+          onClick={() => onSelect(p.id)}
+        />
+      ))}
     </group>
   );
 }
@@ -178,36 +201,45 @@ function Loading() {
 export default function Globe3D({
   points,
   selectedId,
+  onSelect,
 }: {
   points: DistrictPoint[];
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
-  const selected = useMemo(
-    () => points.find((p) => p.id === selectedId) ?? null,
-    [points, selectedId]
-  );
+  const safePoints = useMemo(() => points ?? [], [points]);
 
-  // Always a single point now, so camera distance is a fixed close value
-  // rather than a spread calculation — no more clutter to solve for.
-  const cameraPosition = useMemo((): [number, number, number] => {
-    if (!selected) return [0, 0, 4.2];
-    return latLonToVec3(selected.lat, selected.lon, 2.4);
-  }, [selected]);
+  const initialCameraPosition = useMemo((): [number, number, number] => {
+    if (safePoints.length === 0) return [0, 0, 4.2];
+    const avgLat = safePoints.reduce((s, p) => s + p.lat, 0) / safePoints.length;
+    const avgLon = safePoints.reduce((s, p) => s + p.lon, 0) / safePoints.length;
+    const distance = safePoints.length > 5 ? 2.6 : 4.2;
+    return latLonToVec3(avgLat, avgLon, distance);
+  }, [safePoints]);
+
+  // Selected district's name — shown as a FIXED corner overlay, not
+  // anchored to the 3D marker position, so it never covers the globe
+  // itself regardless of rotation/zoom.
+  const selectedName = safePoints.find((p) => p.id === selectedId)?.name;
 
   return (
     <div className="relative w-full h-full min-h-[360px]">
-      <Canvas camera={{ position: cameraPosition, fov: 45 }}>
+      {selectedName && (
+        <div className="absolute top-3 right-3 z-10 px-3 py-1.5 rounded-lg bg-space/90 border border-signal/50 backdrop-blur pointer-events-none">
+          <span className="font-mono text-sm text-ink whitespace-nowrap">{selectedName}</span>
+        </div>
+      )}
+      <Canvas camera={{ position: initialCameraPosition, fov: 45 }}>
         <ambientLight intensity={0.35} />
         <directionalLight position={[5, 2, 5]} intensity={1.4} color="#fff8e8" />
         <Suspense fallback={<Loading />}>
-          <EarthWithClouds selected={selected} />
+          <EarthWithClouds points={safePoints} selectedId={selectedId} onSelect={onSelect} />
         </Suspense>
         <OrbitControls
           enablePan={false}
           enableZoom={true}
-          minDistance={1.9}
-          maxDistance={4.5}
+          minDistance={1.8}
+          maxDistance={7}
           autoRotate={false}
           rotateSpeed={0.5}
         />

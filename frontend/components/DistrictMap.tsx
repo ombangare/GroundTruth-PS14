@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { DistrictSummary } from "@/lib/api";
@@ -19,22 +19,13 @@ interface Props {
   onSelect: (id: string) => void;
 }
 
-/** Pin-shaped icon (matches the globe marker style) instead of a plain circle. */
-function pinIcon(color: string, size: number): L.DivIcon {
-  const svg = `
-    <svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
-            fill="${color}" stroke="#ffffff" stroke-width="1.2"/>
-      <circle cx="12" cy="9" r="2.6" fill="#ffffff"/>
-    </svg>`;
-  return L.divIcon({
-    html: svg,
-    className: "",
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size],
-  });
-}
-
+/**
+ * Auto-fits the map view to whatever districts are actually loaded.
+ * Fixes the bug where 30+ Maharashtra districts rendered clustered into an
+ * unclickable clump because the map was still framed for all-India zoom —
+ * now it zooms to fit exactly the loaded set, so markers spread out and
+ * become individually clickable.
+ */
 function FitBoundsToDistricts({ districts }: { districts: DistrictSummary[] }) {
   const map = useMap();
 
@@ -48,7 +39,7 @@ function FitBoundsToDistricts({ districts }: { districts: DistrictSummary[] }) {
 }
 
 export default function DistrictMap({ districts, selectedId, onSelect }: Props) {
-  const fallbackCenter: [number, number] = [20.5937, 78.9629];
+  const fallbackCenter: [number, number] = [20.5937, 78.9629]; // India centroid, used only before districts load
 
   return (
     <MapContainer
@@ -60,6 +51,8 @@ export default function DistrictMap({ districts, selectedId, onSelect }: Props) 
     >
       <FitBoundsToDistricts districts={districts} />
 
+      {/* Real satellite/aerial imagery (Esri World Imagery — free, no API
+          key required) instead of a flat vector basemap. */}
       <TileLayer
         url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
         attribution="Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community"
@@ -72,26 +65,23 @@ export default function DistrictMap({ districts, selectedId, onSelect }: Props) 
       />
       {districts.map((d) => {
         const isSelected = d.id === selectedId;
-        const size = isSelected ? 38 : 24;
         return (
-          <Marker
+          <CircleMarker
             key={d.id}
-            position={[d.lat, d.lon]}
-            icon={pinIcon(SEVERITY_COLOR[d.overall_severity], size)}
+            center={[d.lat, d.lon]}
+            radius={isSelected ? 12 : 7}
+            pathOptions={{
+              color: "#ffffff",
+              fillColor: SEVERITY_COLOR[d.overall_severity],
+              fillOpacity: isSelected ? 0.95 : 0.85,
+              weight: isSelected ? 3 : 1.5,
+            }}
             eventHandlers={{ click: () => onSelect(d.id) }}
           >
-            {/* Selected district's name stays visible; others show on hover
-                only, to avoid 36 permanent labels cluttering the map. */}
-            <Tooltip
-              permanent={isSelected}
-              direction="top"
-              offset={[0, -size + 4]}
-              opacity={1}
-              className="!bg-[#0a0e1a]/90 !border !border-signal/50 !text-white !font-mono !text-xs !px-2 !py-1 !rounded-md"
-            >
-              📍 {d.name}
-            </Tooltip>
-          </Marker>
+            <Popup>
+              <span className="font-semibold">{d.name}</span>, {d.state}
+            </Popup>
+          </CircleMarker>
         );
       })}
     </MapContainer>
