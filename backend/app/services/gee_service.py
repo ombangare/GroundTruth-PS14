@@ -19,11 +19,9 @@ we never download raw satellite imagery, just the final numbers):
                         bands — see note in compute_urban_heat below)
 
 AREA OF INTEREST NOTE:
-  Real district boundaries need shapefiles (Survey of India / GADM). This
-  module currently uses a circular buffer around each district's centroid as
-  a placeholder AOI — good enough for a hackathon demo, not for a real
-  district-level rollout. Swap `ee.Geometry.Point(...).buffer(...)` for a
-  proper polygon loaded from a GeoJSON once you have real boundaries.
+  This module dynamically loads the exact district polygon from Google Earth Engine 
+  Assets using the GEE_ASSET_DISTRICT_BOUNDARY environment variable. If the asset
+  is not configured, it gracefully falls back to a circular buffer around the centroid.
 """
 
 import os
@@ -85,60 +83,36 @@ def _sentinel2_composite(aoi, start_date: str, end_date: str):
     return collection.median().clip(aoi)
 
 
-def compute_water_area(aoi, year: str) -> float:
-    """Returns water surface area in sq km using NDWI > 0 threshold."""
-    image = _sentinel2_composite(aoi, f"{year}-01-01", f"{year}-12-31")
-    ndwi = image.normalizedDifference(["B3", "B8"]).rename("NDWI")
-    water_mask = ndwi.gt(0.0)
-    area_image = water_mask.multiply(ee.Image.pixelArea())
-    stats = area_image.reduceRegion(
-        reducer=ee.Reducer.sum(), geometry=aoi, scale=30, maxPixels=1e9
-    )
-    sq_meters = stats.get("NDWI").getInfo() or 0
-    return round(sq_meters / 1_000_000, 2)  # sq km
-
-
-def compute_green_cover_pct(aoi, year: str) -> float:
-    """Returns % of AOI with healthy vegetation using NDVI > 0.3 threshold."""
-    image = _sentinel2_composite(aoi, f"{year}-01-01", f"{year}-12-31")
-    ndvi = image.normalizedDifference(["B8", "B4"]).rename("NDVI")
-    veg_mask = ndvi.gt(0.3)
-
-    veg_area = veg_mask.multiply(ee.Image.pixelArea()).reduceRegion(
-        reducer=ee.Reducer.sum(), geometry=aoi, scale=30, maxPixels=1e9
-    ).get("NDVI").getInfo() or 0
-
-    # AOI area never depends on the year/image — computing it via a pixel
-    # sum every call was pure waste. aoi.area() is a direct geometry
-    # calculation (near-instant), not a satellite image reduction.
-    total_area = aoi.area(maxError=1).getInfo() or 1
-
-    return round((veg_area / total_area) * 100, 1)
-
-
-def compute_urban_heat_proxy(aoi, year: str) -> float:
+def _compute_year_stats_ee(aoi, year: str):
     """
-    Returns a built-up/heat intensity proxy (0-10 scale) using NDBI.
-    NOTE: True Land Surface Temperature needs Landsat thermal bands
-    (ST_B10 on Landsat 8/9). This NDBI-based proxy is a reasonable stand-in
-    for a hackathon demo; swap in real LST for a production version — see
-    the commented block below.
+    Returns an uncomputed ee.Dictionary containing the water, green, and heat 
+    stats for a given year. This prevents redundant composite building.
     """
     image = _sentinel2_composite(aoi, f"{year}-01-01", f"{year}-12-31")
-    ndbi = image.normalizedDifference(["B11", "B8"]).rename("NDBI")
+    
+    # Water (NDWI)
+    ndwi = image.normalizedDifference(["B3", "B8"])
+    water_area = ndwi.gt(0).multiply(ee.Image.pixelArea()).reduceRegion(
+        reducer=ee.Reducer.sum(), geometry=aoi, scale=1000, maxPixels=1e10
+    ).get("nd")
+    
+    # Green (NDVI)
+    ndvi = image.normalizedDifference(["B8", "B4"])
+    green_area = ndvi.gt(0.3).multiply(ee.Image.pixelArea()).reduceRegion(
+        reducer=ee.Reducer.sum(), geometry=aoi, scale=1000, maxPixels=1e10
+    ).get("nd")
+    
+    # Heat Proxy (NDBI)
+    ndbi = image.normalizedDifference(["B11", "B8"])
     mean_ndbi = ndbi.reduceRegion(
-        reducer=ee.Reducer.mean(), geometry=aoi, scale=30, maxPixels=1e9
-    ).get("NDBI").getInfo() or 0
-    # Rescale NDBI (~ -1 to 1) into a friendlier 0-10 "intensity" number
-    return round(max(0, (mean_ndbi + 1) * 5), 2)
-
-    # --- Real LST version (Landsat 8/9), for later ---
-    # landsat = (ee.ImageCollection("LANDSAT/LC09/C02/T1_L2")
-    #            .filterBounds(aoi).filterDate(f"{year}-01-01", f"{year}-12-31")
-    #            .median().clip(aoi))
-    # thermal = landsat.select("ST_B10").multiply(0.00341802).add(149.0).subtract(273.15)
-    # mean_temp = thermal.reduceRegion(ee.Reducer.mean(), aoi, 30).get("ST_B10").getInfo()
-    # return round(mean_temp, 1)  # degrees Celsius
+        reducer=ee.Reducer.mean(), geometry=aoi, scale=1000, maxPixels=1e10
+    ).get("nd")
+    
+    return ee.Dictionary({
+        "water_sqkm": ee.Number(water_area).divide(1_000_000),
+        "green_area_sqm": ee.Number(green_area),
+        "mean_ndbi": ee.Number(mean_ndbi)
+    })
 
 
 def get_thumbnail_url(aoi, year: str, dimensions: int = 512) -> str:
@@ -155,15 +129,20 @@ def get_thumbnail_url(aoi, year: str, dimensions: int = 512) -> str:
 def _build_aoi(lat: float, lon: float, buffer_m: int, district: dict | None = None):
     """
     Returns the Earth Engine geometry to use as the area of interest.
-    Uses the district's real boundary polygon if one was found in
-    districts.geojson (via district_boundaries.py); falls back to a
-    circle buffer around the centroid otherwise — so a missing/unmatched
-    boundary file never breaks computation, it just makes it less precise.
+    If GEE_ASSET_DISTRICT_BOUNDARY is set in the environment, it queries
+    the actual polygon from the Earth Engine FeatureCollection.
+    Otherwise, it falls back to a simple centroid buffer.
     """
-    if district is not None:
-        geometry = district_boundaries.get_district_geometry(district)
-        if geometry is not None:
-            return ee.Geometry(geometry)
+    asset_id = os.environ.get("GEE_ASSET_DISTRICT_BOUNDARY")
+    if asset_id and district and district.get("name"):
+        try:
+            fc = ee.FeatureCollection(asset_id)
+            # The shapefile DISTRICT names are entirely uppercase
+            feature = fc.filter(ee.Filter.eq("DISTRICT", district["name"].upper())).first()
+            return feature.geometry()
+        except Exception as e:
+            print(f"[gee_service] Failed to load AOI from Asset {asset_id}: {e}. Falling back to buffer.")
+            
     return ee.Geometry.Point([lon, lat]).buffer(buffer_m)
 
 
@@ -180,32 +159,60 @@ def get_district_images(lat: float, lon: float, before_year: str, after_year: st
 def compute_district_indicators(lat: float, lon: float, before_year: str, after_year: str, buffer_m: int = 5000, district: dict | None = None) -> dict:
     """
     Main entry point: computes all 3 indicators for a district, for both
-    time periods. Returns a dict shaped to match mock_districts.py exactly,
-    so indicator_engine.py doesn't need to know or care whether the numbers
-    came from GEE or the mock fixture.
+    time periods using a single highly-optimized Earth Engine network call.
     """
     aoi = _build_aoi(lat, lon, buffer_m, district)
+
+    # Build an Earth Engine dictionary to compute EVERYTHING in parallel on Google's servers
+    payload = ee.Dictionary({
+        "before": _compute_year_stats_ee(aoi, before_year),
+        "after": _compute_year_stats_ee(aoi, after_year),
+        "total_area_sqm": aoi.area(maxError=1)
+    })
+    
+    # ⬇⬇⬇ THIS IS THE ONLY NETWORK CALL ⬇⬇⬇
+    results = payload.getInfo()
+    
+    # Safely parse the results (Earth Engine returns None for empty/null values)
+    total_area_sqm = results.get("total_area_sqm") or 1
+    
+    def parse_stats(period: str):
+        data = results.get(period, {})
+        water = data.get("water_sqkm") or 0
+        green_sqm = data.get("green_area_sqm") or 0
+        green_pct = (green_sqm / total_area_sqm) * 100
+        ndbi = data.get("mean_ndbi") or 0
+        heat_proxy = max(0, (ndbi + 1) * 5)
+        
+        return {
+            "water": round(water, 2),
+            "green": round(green_pct, 1),
+            "heat": round(heat_proxy, 2)
+        }
+
+    before_stats = parse_stats("before")
+    after_stats = parse_stats("after")
 
     return {
         "water": {
             "sdg": "SDG 6",
             "label": "Water body surface area",
             "index_used": "NDWI",
-            "before_value_sqkm": compute_water_area(aoi, before_year),
-            "after_value_sqkm": compute_water_area(aoi, after_year),
+            "before_value_sqkm": before_stats["water"],
+            "after_value_sqkm": after_stats["water"],
         },
         "green_cover": {
             "sdg": "SDG 15",
             "label": "Vegetation / green cover",
             "index_used": "NDVI",
-            "before_value_pct": compute_green_cover_pct(aoi, before_year),
-            "after_value_pct": compute_green_cover_pct(aoi, after_year),
+            "before_value_pct": before_stats["green"],
+            "after_value_pct": after_stats["green"],
         },
         "urban_heat": {
             "sdg": "SDG 11",
             "label": "Urban heat island intensity",
             "index_used": "NDBI (proxy)",
-            "before_value_celsius": compute_urban_heat_proxy(aoi, before_year),
-            "after_value_celsius": compute_urban_heat_proxy(aoi, after_year),
+            "before_value_celsius": before_stats["heat"],
+            "after_value_celsius": after_stats["heat"],
         },
     }

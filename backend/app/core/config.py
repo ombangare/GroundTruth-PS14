@@ -7,6 +7,7 @@ USE_GEE = os.environ.get("USE_GEE", "false").lower() == "true"
 GEE_SERVICE_ACCOUNT_EMAIL = os.environ.get("GEE_SERVICE_ACCOUNT_EMAIL")
 GEE_SERVICE_ACCOUNT_KEY_PATH = os.environ.get("GEE_SERVICE_ACCOUNT_KEY_PATH")
 GEE_PROJECT_ID = os.environ.get("GEE_PROJECT_ID")
+GEE_ASSET_DISTRICT_BOUNDARY = os.environ.get("GEE_ASSET_DISTRICT_BOUNDARY")
 
 # Supabase Config
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
@@ -20,21 +21,21 @@ def validate_env():
     """
     missing = []
     
-    # If GEE is enabled, the credentials MUST be provided.
-    if USE_GEE:
-        if not GEE_SERVICE_ACCOUNT_EMAIL:
-            missing.append("GEE_SERVICE_ACCOUNT_EMAIL")
-        if not GEE_SERVICE_ACCOUNT_KEY_PATH:
-            missing.append("GEE_SERVICE_ACCOUNT_KEY_PATH")
-        if not GEE_PROJECT_ID:
-            missing.append("GEE_PROJECT_ID")
+    if not GEE_SERVICE_ACCOUNT_EMAIL:
+        missing.append("GEE_SERVICE_ACCOUNT_EMAIL")
+    if not GEE_SERVICE_ACCOUNT_KEY_PATH:
+        missing.append("GEE_SERVICE_ACCOUNT_KEY_PATH")
+    if not GEE_PROJECT_ID:
+        missing.append("GEE_PROJECT_ID")
+    if not GEE_ASSET_DISTRICT_BOUNDARY:
+        missing.append("GEE_ASSET_DISTRICT_BOUNDARY")
             
     if not SUPABASE_URL:
-        print("⚠️ WARNING: SUPABASE_URL is not set. Database integration will not work.")
+        missing.append("SUPABASE_URL")
     if not SUPABASE_KEY:
-        print("⚠️ WARNING: SUPABASE_KEY is not set. Database integration will not work.")
+        missing.append("SUPABASE_KEY")
     if not os.environ.get("SUPABASE_JWT_SECRET"):
-        print("⚠️ WARNING: SUPABASE_JWT_SECRET is not set in environment. Using insecure fallback default for local dev. Do not use in production!")
+        missing.append("SUPABASE_JWT_SECRET")
         
     if missing:
         raise ValueError(f"CRITICAL: Missing required environment variables for USE_GEE=true: {', '.join(missing)}. Please set them in your .env file.")

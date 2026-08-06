@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, BackgroundTasks
+from typing import Optional
 from app.schemas.district import DistrictQuerySanitizer
 from app.core.exceptions import NotFoundError
 from app.services import indicator_engine
@@ -26,9 +27,17 @@ def get_district_history(request: Request, district_id: str):
 
 @router.get("/{district_id}")
 @limiter.limit("15/minute")
-def get_district(request: Request, district_id: str, query: DistrictQuerySanitizer = Depends()):
+def get_district(
+    request: Request, 
+    district_id: str, 
+    background_tasks: BackgroundTasks,
+    query: DistrictQuerySanitizer = Depends(),
+    user: Optional[dict] = Depends(RequireAuth(required=False))
+):
     """Full indicator breakdown for one district — used by the detail panel."""
-    district = indicator_engine.get_district(district_id, query.year_before, query.year_after)
+    district = district_service.get_district(
+        district_id, query.year_before, query.year_after, background_tasks
+    )
     if not district:
         raise NotFoundError(f"District '{district_id}' not found")
     return district

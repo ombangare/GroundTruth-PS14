@@ -47,14 +47,59 @@ if USE_GEE:
     else:
         print("[indicator_engine] USE_GEE=true but Earth Engine init failed — falling back to mock data. Check SETUP_GEE.md.")
 
-# Severity thresholds: % change beyond which we flag "warn" or "bad".
-# These are placeholder thresholds for the hackathon demo — tune once
-# real multi-district data is available.
-THRESHOLDS = {
-    "water": {"warn": -10, "bad": -20},        # negative = shrinkage
-    "green_cover": {"warn": -8, "bad": -15},   # negative = loss
-    "urban_heat": {"warn": 30, "bad": 60},      # positive = intensity rising
-}
+# We dynamically load thresholds from Supabase to avoid hardcoded judgments.
+# Fallbacks are provided if the 'indicators' table isn't populated yet.
+_cached_thresholds = None
+
+def get_thresholds():
+    global _cached_thresholds
+    if _cached_thresholds is not None:
+        return _cached_thresholds
+        
+    fallback = {
+        "water": {"warn": -10, "bad": -20},
+        "green_cover": {"warn": -8, "bad": -15},
+        "urban_heat": {"warn": 30, "bad": 60},
+    }
+    
+    if not supabase:
+        return fallback
+        
+    try:
+        response = supabase.table("indicators").select("id, warn_threshold, bad_threshold").execute()
+        if response.data:
+            _cached_thresholds = {
+                row["id"]: {"warn": row["warn_threshold"], "bad": row["bad_threshold"]}
+                for row in response.data
+            }
+            return _cached_thresholds
+    except Exception as e:
+        print(f"[district_service] Failed to fetch thresholds from DB: {e}")
+    return fallback
+
+import json
+import os
+
+_districts_db = None
+
+def _get_district_metadata(district_id: str) -> dict | None:
+    global _districts_db
+    if _districts_db is None:
+        # Load the frontend's static GeoJSON file into memory as our "database"
+        geojson_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../frontend/public/districts.geojson"))
+        try:
+            with open(geojson_path, "r") as f:
+                data = json.load(f)
+            _districts_db = {}
+            for feature in data.get("features", []):
+                props = feature.get("properties", {})
+                if "id" in props:
+                    _districts_db[props["id"]] = props
+        except Exception as e:
+            print(f"[district_service] Failed to load local GeoJSON: {e}")
+            _districts_db = {}
+            
+    return _districts_db.get(district_id)
 
 VERDICT_TEMPLATES = {
     "water": {
@@ -129,13 +174,39 @@ def _build_indicator_result(indicator_key: str, indicator: dict, district_name: 
 
 
 def get_all_districts() -> list[dict]:
-    # List view stays fast — it never calls live GEE, only mock/cached severity
-    # badges. Real computation happens on-demand when a district is opened
-    # (get_district), so clicking around the app doesn't mean waiting on 9+
-    # live satellite queries just to render a list.
+    """
+    List view stays fast — it only checks the DB cache via _summarize_district. 
+    It never triggers live Earth Engine computation.
+    """
+    global _districts_db
+    if _districts_db is None:
+        _get_district_metadata("") # Force load
+        
+    # Bulk fetch cache to prevent N+1 queries (780+ sequential requests)
+    cache_lookup = {}
+    if supabase:
+        try:
+            cache_resp = supabase.table("indicator_comparisons").select("district_id, indicators, images") \
+                .eq("period_before", "2017") \
+                .eq("period_after", "2024").execute()
+            for row in cache_resp.data:
+                cache_lookup[row["district_id"]] = row
+        except Exception as e:
+            print(f"[district_service] Cache prefetch failed: {e}")
+
     results = []
-    for d in DISTRICTS:
-        results.append(_summarize_district(d, use_live=False))
+    for d in _districts_db.values():
+        district_dict = {
+            "id": d["id"],
+            "name": d["name"],
+            "state": d["state"],
+            "lat": d.get("latitude") or d.get("lat"),
+            "lon": d.get("longitude") or d.get("lon"),
+            "period_before": "2017",
+            "period_after": "2024",
+            "_prefetched_cache": cache_lookup.get(d["id"])
+        }
+        results.append(_summarize_district(district_dict, use_live=False))
     return results
 
 
@@ -143,6 +214,11 @@ def get_district_history(district_id: str) -> dict | None:
     match = next((d for d in DISTRICTS if d["id"] == district_id), None)
     if not match:
         return None
+        
+    d = _get_district_metadata(district_id)
+    if not d:
+        return None
+        
     cached_years = gee_cache.list_cached_years(district_id)
     return {
         "district_id": district_id,
@@ -150,29 +226,35 @@ def get_district_history(district_id: str) -> dict | None:
         "readings": []
     }
 
-
-def get_district(district_id: str, year_before: Optional[int] = None, year_after: Optional[int] = None) -> dict | None:
-    match = next((d for d in DISTRICTS if d["id"] == district_id), None)
-    if not match:
+def get_district(district_id: str, year_before: Optional[int] = None, year_after: Optional[int] = None, background_tasks = None) -> dict | None:
+    db_district = _get_district_metadata(district_id)
+    if not db_district:
         return None
         
-    d = copy.deepcopy(match)
-    if year_before is not None:
-        d["period_before"] = str(year_before)
-    if year_after is not None:
-        d["period_after"] = str(year_after)
+    district_dict = {
+        "id": db_district["id"],
+        "name": db_district["name"],
+        "state": db_district["state"],
+        "lat": db_district.get("latitude") or db_district.get("lat"),
+        "lon": db_district.get("longitude") or db_district.get("lon"),
+        "period_before": str(year_before) if year_before else "2017",
+        "period_after": str(year_after) if year_after else "2024"
+    }
         
-    return _summarize_district(d, detailed=True, use_live=True)
+    return _summarize_district(district_dict, detailed=True, use_live=True, background_tasks=background_tasks)
 
-
-def _get_indicators_for(d: dict, use_live: bool) -> dict | None:
+def _get_indicators_for(d: dict, use_live: bool, background_tasks = None) -> dict | None:
     """
     Returns the raw indicator dict for a district.
     1. Checks Database (Supabase cache) first.
     2. If not found and use_live is True, calls Earth Engine and caches result.
     3. If use_live is False (e.g. map list view), returns None (pending).
     """
-    cached = gee_cache.get(d["id"], d["period_before"], d["period_after"])
+    if "_prefetched_cache" in d:
+        cached = d["_prefetched_cache"]
+    else:
+        cached = gee_cache.get(d["id"], d["period_before"], d["period_after"])
+        
     if cached is not None:
         d["_data_source"] = "database"
         d["_cached_images"] = cached.get("images", {"before": None, "after": None})
@@ -198,7 +280,13 @@ def _get_indicators_for(d: dict, use_live: bool) -> dict | None:
         )
         d["_data_source"] = "live"
         d["_cached_images"] = images
-        gee_cache.set(d["id"], d["period_before"], d["period_after"], result, images)
+        
+        # Defer cache writing to a background task so the frontend doesn't wait for the DB insert
+        if background_tasks:
+            background_tasks.add_task(gee_cache.set, d["id"], d["period_before"], d["period_after"], result, images)
+        else:
+            gee_cache.set(d["id"], d["period_before"], d["period_after"], result, images)
+            
         return result
     except Exception as e:
         print(f"[indicator_engine] Live GEE call failed for {d['name']}: {e}")
@@ -284,9 +372,8 @@ def _build_pending_result(indicator_key: str, district_name: str) -> dict:
         "verdict": f"Not yet computed for {district_name} — enable live Earth Engine data or select this district to run a query.",
     }
 
-
-def _summarize_district(d: dict, detailed: bool = False, use_live: bool = False) -> dict:
-    raw_indicators = _get_indicators_for(d, use_live=use_live)
+def _summarize_district(d: dict, detailed: bool = False, use_live: bool = False, background_tasks = None) -> dict:
+    raw_indicators = _get_indicators_for(d, use_live=use_live, background_tasks=background_tasks)
 
     if raw_indicators is None:
         indicator_results = {

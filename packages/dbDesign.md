@@ -14,60 +14,33 @@ Extends the `auth.users` table to store application-specific user data and roles
 - `last_name` (Text)
 - `created_at` (Timestamp)
 
-**RLS Policies:**
-- `viewer`: Can read data but cannot trigger new Earth Engine fetches (read-only).
-- `researcher`: Can read data and trigger new Earth Engine computations via the API.
-- `admin`: Full access to manage users, data, and system configurations.
+### 1. Database Setup
 
-## 2. Core Entities & Spatial Data
+Copy and paste the following SQL block into the Supabase SQL Editor. It will create the caching table and the performance index in one step:
 
-### `public.districts`
-Stores geographical entities. Future-proofed by allowing PostGIS geometries.
-- `id` (String, Primary Key) - e.g., 'kanpur_urban'
-- `name` (Text)
-- `state` (Text)
-- `latitude` (Float)
-- `longitude` (Float)
-- `geom` (Geometry/Geography) - For advanced spatial queries (PostGIS expansion).
-- `created_at` (Timestamp)
+```sql
+-- Indicator Comparisons Table: Used by gee_cache.py to instantly serve previously computed data.
+CREATE TABLE public.indicator_comparisons (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    district_id TEXT NOT NULL,
+    period_before TEXT NOT NULL,
+    period_after TEXT NOT NULL,
+    indicators JSONB NOT NULL,
+    images JSONB,
+    cached_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
 
-### `public.indicators`
-Defines the types of metrics we track. By decoupling indicators into their own table, we can add new ones (e.g., Air Quality, Flood Risk) without altering the schema.
-- `id` (String, Primary Key) - e.g., 'water', 'green_cover'
-- `sdg_target` (Text) - e.g., 'SDG 6'
-- `label` (Text)
-- `index_used` (Text) - e.g., 'NDWI', 'NDVI'
+-- Index for fast cache lookups by district and time periods
+CREATE INDEX idx_indicator_comparisons_lookup 
+ON public.indicator_comparisons(district_id, period_before, period_after);
+```
 
-## 3. Data Storage (Caching & Timelines)
+## Integration Workflow
 
-To avoid re-visiting the Earth Engine API unnecessarily and to allow timeline comparisons across varying periods, we store computed absolute metrics.
-
-### `public.indicator_readings`
-Stores the actual computed values for a district at a specific time period.
-- `id` (UUID, Primary Key)
-- `district_id` (String, Foreign Key to `districts.id`)
-- `indicator_id` (String, Foreign Key to `indicators.id`)
-- `year` (Integer) - The time period (e.g., 2019, 2023). 
-- `value` (Float) - The raw computed value (e.g., surface area, NDVI score).
-- `created_at` (Timestamp)
-
-*Querying over time:* By storing absolute `value` and `year`, the backend can instantly calculate the `pct_change` between any two arbitrary years without re-querying Google Earth Engine.
-
-### `public.satellite_imagery`
-Stores metadata and Supabase Storage URLs for map visualizations.
-- `id` (UUID, Primary Key)
-- `district_id` (String, Foreign Key to `districts.id`)
-- `year` (Integer)
-- `storage_path` (Text) - Path to the image bucket in Supabase Storage.
-- `created_at` (Timestamp)
-
-## 4. Integration Workflow
-
-1. **Frontend Request**: User requests data for Kanpur (2019 vs 2023).
-2. **Backend Cache Check**: Backend queries `indicator_readings` where `district_id='kanpur_urban'` and `year IN (2019, 2023)`.
-3. **Cache Hit**: Both years exist in the database. Backend dynamically computes the percentage change, severity, and plain-language verdict, then returns the response.
-4. **Cache Miss**: One or both years are missing. 
-   - Backend checks User Role (only `researcher` or `admin` can trigger heavy compute).
-   - Backend triggers Google Earth Engine script for the missing year(s).
-   - Backend saves the new `value` in `indicator_readings` and saves image buffers to Supabase Storage, recording the URL in `satellite_imagery`.
+1. **Frontend Request**: User requests data for Bengaluru (2017 vs 2024).
+2. **Backend Cache Check**: `district_service.py` checks `indicator_comparisons` where `district_id='bengaluru_urban'`, `period_before='2017'`, and `period_after='2024'`.
+3. **Cache Hit**: The row exists. The backend fetches the `JSONB` data, retrieves dynamic thresholds from the `indicators` table, computes the final plain-language verdict, and returns the response.
+4. **Cache Miss**: The row does not exist. 
+   - Backend triggers `gee_service.py` to run live Earth Engine scripts for the missing years.
+   - Backend saves the newly computed JSON response into `indicator_comparisons`.
    - Backend calculates final results and returns the response.
