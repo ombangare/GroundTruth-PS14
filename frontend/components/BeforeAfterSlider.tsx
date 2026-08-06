@@ -6,11 +6,13 @@ import type { IndicatorDetail } from "@/lib/api";
 
 interface Props {
   districtId: string;
+  district?: any;
   beforeLabel: string;
   afterLabel: string;
   indicators: Record<string, IndicatorDetail>;
   beforeImageUrl?: string | null;
   afterImageUrl?: string | null;
+  onImageClick?: (lat: number, lon: number) => void;
 }
 
 /**
@@ -22,11 +24,13 @@ interface Props {
  */
 export default function BeforeAfterSlider({
   districtId,
+  district,
   beforeLabel,
   afterLabel,
   indicators,
   beforeImageUrl,
   afterImageUrl,
+  onImageClick,
 }: Props) {
   const [split, setSplit] = useState(50);
   const [beforeError, setBeforeError] = useState(false);
@@ -41,18 +45,40 @@ export default function BeforeAfterSlider({
   const green = indicators.green_cover;
   const heat = indicators.urban_heat;
 
+  const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onImageClick || !district || !beforeImageUrl) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xPct = (e.clientX - rect.left) / rect.width;
+    const yPct = (e.clientY - rect.top) / rect.height;
+    
+    // In gee_service, we use a 5000m buffer.
+    // 5000m is ~0.045 degrees.
+    const boundsSizeDeg = 0.045;
+    const minLon = district.lon - boundsSizeDeg;
+    const maxLon = district.lon + boundsSizeDeg;
+    const minLat = district.lat - boundsSizeDeg;
+    const maxLat = district.lat + boundsSizeDeg;
+    
+    // Y is inverted (0 is top, which is maxLat)
+    const clickLon = minLon + (xPct * (maxLon - minLon));
+    const clickLat = maxLat - (yPct * (maxLat - minLat));
+    
+    onImageClick(clickLat, clickLon);
+  };
+
   return (
     <div className="hud-panel p-4">
       <div className="flex items-center justify-between mb-2">
         <p className="font-mono text-[10px] text-signal uppercase tracking-widest">
           Before / After — {water?.index_used} · {green?.index_used} · {heat?.index_used}
         </p>
-        {!beforeImageUrl && (
-          <span className="font-mono text-[10px] text-ink-muted/70">data-driven preview</span>
-        )}
+        <span className="font-mono text-[10px] text-aurora-magenta animate-pulse">Click image to analyze point</span>
       </div>
 
-      <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden select-none">
+      <div 
+        className="relative w-full aspect-[16/9] rounded-lg overflow-hidden select-none cursor-crosshair"
+        onClick={handleImageClick}
+      >
         <div className="absolute inset-0">
           {afterImageUrl && !afterError ? (
             <img 

@@ -13,7 +13,7 @@ export interface DistrictSummary {
   period_before: string;
   period_after: string;
   overall_severity: Severity;
-  data_source: "live" | "mock" | "pending";
+  data_source: "live" | "mock" | "pending" | "database";
   indicator_summary: Record<string, { severity: Severity; pct_change: number | null }>;
 }
 
@@ -69,7 +69,7 @@ export async function fetchDistricts(): Promise<DistrictSummary[]> {
   return rawDistricts.map((d: any) => {
     const rawIndicators = cacheLookup.get(d.id);
     let overallSeverity: Severity = "pending";
-    let dataSource: "live" | "mock" | "pending" = "pending";
+    let dataSource: "live" | "mock" | "pending" | "database" = "pending";
     let summary: Record<string, any> = {};
 
     if (rawIndicators) {

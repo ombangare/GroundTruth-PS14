@@ -20,6 +20,7 @@ const DistrictMap = dynamic(() => import("@/components/DistrictMap"), {
   )
 });
 
+const PoiChartPanel = dynamic(() => import("@/components/PoiChartPanel"), { ssr: false });
 const Globe3D = dynamic(() => import("@/components/Globe3D"), { ssr: false });
 
 export default function Home() {
@@ -28,6 +29,7 @@ export default function Home() {
   const [detail, setDetail] = useState<DistrictDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [poiCoords, setPoiCoords] = useState<{lat: number, lon: number} | null>(null);
   const [districtFilter, setDistrictFilter] = useState("");
   const [sortMode, setSortMode] = useState<"az" | "severity">("az");
   const [loading, setLoading] = useState(true);
@@ -75,6 +77,7 @@ export default function Home() {
     if (!selectedId) return;
     setDetailLoading(true);
     setDetailError(null);
+    setPoiCoords(null); // Reset POI chart when district changes
     fetchDistrict(selectedId)
       .then((d) => {
         setDetail(d);
@@ -230,14 +233,21 @@ export default function Home() {
           </div>
 
           {detail && (
-            <BeforeAfterSlider 
-              districtId={detail.id}
-              beforeLabel={detail.period_before}
-              afterLabel={detail.period_after}
-              indicators={detail.indicators}
-              beforeImageUrl={detail.images?.before}
-              afterImageUrl={detail.images?.after}
-            />
+            <div className="flex flex-col gap-4">
+              <BeforeAfterSlider 
+                district={detail}
+                districtId={detail.id}
+                beforeLabel={detail.period_before}
+                afterLabel={detail.period_after}
+                indicators={detail.indicators}
+                beforeImageUrl={detail.images?.before}
+                afterImageUrl={detail.images?.after}
+                onImageClick={(lat, lon) => setPoiCoords({ lat, lon })}
+              />
+              {poiCoords && (
+                <PoiChartPanel lat={poiCoords.lat} lon={poiCoords.lon} />
+              )}
+            </div>
           )}
         </div>
 

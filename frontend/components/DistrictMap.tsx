@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap, GeoJSON } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap, GeoJSON } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { DistrictSummary } from "@/lib/api";
@@ -75,7 +75,7 @@ export default function DistrictMap({ districts, selectedId, onSelect }: Props) 
       click: () => onSelect(id),
     });
     
-    layer.bindPopup(`<span class="font-semibold">${name}</span>, ${state}`);
+    layer.bindTooltip(`<span class="font-semibold">${name}</span>, ${state}`, { sticky: true });
   };
 
   return (
@@ -123,9 +123,9 @@ export default function DistrictMap({ districts, selectedId, onSelect }: Props) 
               }}
               eventHandlers={{ click: () => onSelect(d.id) }}
             >
-              <Popup>
+              <Tooltip sticky>
                 <span className="font-semibold">{d.name}</span>, {d.state}
-              </Popup>
+              </Tooltip>
             </CircleMarker>
           );
         })
