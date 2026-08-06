@@ -35,6 +35,8 @@ from app.data.mock_districts import DISTRICTS
 from app.config import USE_GEE
 from app.services import gee_service
 from app.services import gee_cache
+import copy
+from typing import Optional
 
 _gee_ready = False
 if USE_GEE:
@@ -136,11 +138,30 @@ def get_all_districts() -> list[dict]:
     return results
 
 
-def get_district(district_id: str) -> dict | None:
+def get_district_history(district_id: str) -> dict | None:
     match = next((d for d in DISTRICTS if d["id"] == district_id), None)
     if not match:
         return None
-    return _summarize_district(match, detailed=True, use_live=True)
+    cached_years = gee_cache.list_cached_years(district_id)
+    return {
+        "district_id": district_id,
+        "cached_years": cached_years,
+        "readings": []
+    }
+
+
+def get_district(district_id: str, year_before: Optional[int] = None, year_after: Optional[int] = None) -> dict | None:
+    match = next((d for d in DISTRICTS if d["id"] == district_id), None)
+    if not match:
+        return None
+        
+    d = copy.deepcopy(match)
+    if year_before is not None:
+        d["period_before"] = str(year_before)
+    if year_after is not None:
+        d["period_after"] = str(year_after)
+        
+    return _summarize_district(d, detailed=True, use_live=True)
 
 
 def _get_indicators_for(d: dict, use_live: bool) -> dict | None:

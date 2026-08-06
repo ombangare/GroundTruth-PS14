@@ -3,7 +3,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import districts
+from app.routers import districts, protected
 
 app = FastAPI(
     title="GroundTruth API",
@@ -20,6 +20,7 @@ app.add_middleware(
 )
 
 app.include_router(districts.router)
+app.include_router(protected.router)
 
 
 @app.get("/")

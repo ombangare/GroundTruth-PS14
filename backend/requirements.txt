@@ -9,3 +9,8 @@ python-dotenv==1.0.1
 # --- Optional, only needed if you move from point-buffer AOIs to real district shapefiles ---
 # geopandas==0.14.4
 # rasterio==1.3.10
+
+# Supabase Auth Verification & Database
+PyJWT==2.8.0
+supabase==2.8.1
+
