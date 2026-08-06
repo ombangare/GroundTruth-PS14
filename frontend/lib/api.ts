@@ -69,3 +69,15 @@ export async function fetchDistrict(id: string, yearBefore?: number, yearAfter?:
   return res.json();
 }
 
+export async function fetchDistrictImages(id: string, yearBefore?: number, yearAfter?: number): Promise<{ before: string | null; after: string | null }> {
+  const params = new URLSearchParams();
+  if (yearBefore) params.append("year_before", yearBefore.toString());
+  if (yearAfter) params.append("year_after", yearAfter.toString());
+  
+  const headers = await getAuthHeaders();
+  const url = `${API_BASE}/api/districts/${id}/images${params.toString() ? '?' + params.toString() : ''}`;
+  const res = await fetch(url, { cache: "no-store", headers });
+  if (!res.ok) throw new Error("Failed to fetch images");
+  return res.json();
+}
+

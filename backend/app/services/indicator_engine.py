@@ -47,35 +47,12 @@ if USE_GEE:
     else:
         print("[indicator_engine] USE_GEE=true but Earth Engine init failed — falling back to mock data. Check SETUP_GEE.md.")
 
-# We dynamically load thresholds from Supabase to avoid hardcoded judgments.
-# Fallbacks are provided if the 'indicators' table isn't populated yet.
-_cached_thresholds = None
-
 def get_thresholds():
-    global _cached_thresholds
-    if _cached_thresholds is not None:
-        return _cached_thresholds
-        
-    fallback = {
+    return {
         "water": {"warn": -10, "bad": -20},
         "green_cover": {"warn": -8, "bad": -15},
-        "urban_heat": {"warn": 30, "bad": 60},
+        "urban_heat": {"warn": 30, "bad": 60}
     }
-    
-    if not supabase:
-        return fallback
-        
-    try:
-        response = supabase.table("indicators").select("id, warn_threshold, bad_threshold").execute()
-        if response.data:
-            _cached_thresholds = {
-                row["id"]: {"warn": row["warn_threshold"], "bad": row["bad_threshold"]}
-                for row in response.data
-            }
-            return _cached_thresholds
-    except Exception as e:
-        print(f"[district_service] Failed to fetch thresholds from DB: {e}")
-    return fallback
 
 import json
 import os
@@ -243,6 +220,34 @@ def get_district(district_id: str, year_before: Optional[int] = None, year_after
         
     return _summarize_district(district_dict, detailed=True, use_live=True, background_tasks=background_tasks)
 
+def get_district_images_only(district_id: str, year_before: Optional[int] = None, year_after: Optional[int] = None) -> dict | None:
+    db_district = _get_district_metadata(district_id)
+    if not db_district:
+        return None
+        
+    district_dict = {
+        "id": db_district["id"],
+        "name": db_district["name"],
+        "state": db_district["state"],
+        "lat": db_district.get("latitude") or db_district.get("lat"),
+        "lon": db_district.get("longitude") or db_district.get("lon"),
+        "period_before": str(year_before) if year_before else "2017",
+        "period_after": str(year_after) if year_after else "2024"
+    }
+
+    if _gee_ready:
+        from app.services import gee_service
+        try:
+            return gee_service.get_district_images(
+                lat=district_dict["lat"], lon=district_dict["lon"],
+                before_year=district_dict["period_before"], after_year=district_dict["period_after"],
+                district=district_dict
+            )
+        except Exception as e:
+            print(f"[district_service] Failed to get fresh images: {e}")
+            
+    return {"before": None, "after": None}
+
 def _get_indicators_for(d: dict, use_live: bool, background_tasks = None) -> dict | None:
     """
     Returns the raw indicator dict for a district.
@@ -257,7 +262,7 @@ def _get_indicators_for(d: dict, use_live: bool, background_tasks = None) -> dic
         
     if cached is not None:
         d["_data_source"] = "database"
-        d["_cached_images"] = cached.get("images", {"before": None, "after": None})
+        d["_cached_images"] = {"before": None, "after": None}
         return cached["indicators"]
 
     if not use_live:

@@ -15,6 +15,17 @@ def list_districts(request: Request):
     return indicator_engine.get_all_districts()
 
 
+@router.get("/{district_id}/images")
+def get_district_images(
+    district_id: str, 
+    year_before: Optional[int] = Query(None), 
+    year_after: Optional[int] = Query(None)
+):
+    res = district_service.get_district_images_only(district_id, year_before, year_after)
+    if not res:
+        raise HTTPException(status_code=404, detail="Images not found")
+    return res
+
 @router.get("/{district_id}/history")
 @limiter.limit("20/minute")
 def get_district_history(request: Request, district_id: str):

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
-import { fetchDistricts, fetchDistrict, type DistrictSummary, type DistrictDetail } from "@/lib/api";
+import { fetchDistricts, fetchDistrict, fetchDistrictImages, type DistrictSummary, type DistrictDetail } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import LoginModal from "@/components/LoginModal";
 import { LogIn, LogOut, User } from "lucide-react";
@@ -78,6 +78,10 @@ export default function Home() {
       .then((d) => {
         setDetail(d);
         setDetailLoading(false);
+        // Fetch real-time images in the background so the UI doesn't block!
+        fetchDistrictImages(selectedId).then(imgs => {
+          setDetail(prev => prev && prev.id === selectedId ? { ...prev, images: imgs } : prev);
+        }).catch(err => console.error("Live image fetch failed:", err));
       })
       .catch((err) => {
         setDetail(null);
