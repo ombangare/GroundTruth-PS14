@@ -138,8 +138,20 @@ export async function fetchDistrictImages(id: string, yearBefore?: number, yearA
   
   const headers = await getAuthHeaders();
   const url = `${API_BASE}/api/districts/${id}/images${params.toString() ? '?' + params.toString() : ''}`;
-  const res = await fetch(url, { cache: "no-store", headers });
-  if (!res.ok) throw new Error("Failed to fetch images");
-  return res.json();
+  
+  // Abort after 8 seconds so the UI doesn't hang when GEE is unavailable
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  
+  try {
+    const res = await fetch(url, { cache: "no-store", headers, signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error("Failed to fetch images");
+    return res.json();
+  } catch (err) {
+    clearTimeout(timeout);
+    // Return null images so the UI shows the placeholder state
+    return { before: null, after: null };
+  }
 }
 
