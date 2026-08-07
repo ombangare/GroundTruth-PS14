@@ -1,6 +1,7 @@
 import os
+import json
 from dotenv import load_dotenv
-from google import genai
+from groq import Groq
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -33,57 +34,55 @@ def fetch_district_data(district_id: str):
 @router.post("/chat")
 async def copilot_chat(request: ChatRequest):
     # 1. Validate API Key
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key or api_key == "your_actual_gemini_api_key_here":
-        print("❌ ERROR: You must put a real Gemini API Key in your backend/.env file!")
-        raise HTTPException(status_code=500, detail="Invalid or missing API Key in .env")
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        print("❌ ERROR: You must put a real GROQ_API_KEY in your backend/.env file!")
+        raise HTTPException(status_code=500, detail="Invalid or missing GROQ_API_KEY in .env")
 
-    context = ""
+    context_str = "You are GroundTruth Copilot, an AI assistant analyzing district telemetry in India."
     
-    # 2. RAG LOGIC: Inject real satellite data if a district is selected
+    # 2. RAG LOGIC: Inject real satellite data for the current district
     if request.district_id:
         try:
             district_data = fetch_district_data(request.district_id)
             if district_data:
-                name = district_data.get('name') if isinstance(district_data, dict) else getattr(district_data, 'name', '')
-                state = district_data.get('state') if isinstance(district_data, dict) else getattr(district_data, 'state', '')
-                score = district_data.get('health_score') if isinstance(district_data, dict) else getattr(district_data, 'health_score', 'Pending')
-                severity = district_data.get('overall_severity') if isinstance(district_data, dict) else getattr(district_data, 'overall_severity', 'Unknown')
-                indicators = district_data.get('indicators', {}) if isinstance(district_data, dict) else getattr(district_data, 'indicators', {})
-
-                w_change = indicators.get('water', {}).get('pct_change', 'N/A') if isinstance(indicators, dict) else 'N/A'
-                g_change = indicators.get('green_cover', {}).get('pct_change', 'N/A') if isinstance(indicators, dict) else 'N/A'
-                h_change = indicators.get('urban_heat', {}).get('pct_change', 'N/A') if isinstance(indicators, dict) else 'N/A'
-
-                context = f"""
-                SYSTEM CONTEXT - GROUNDTRUTH TELEMETRY:
-                The user is currently analyzing {name}, {state}.
-                Overall Health Score: {score}/100.
-                Severity Level: {severity}.
+                # Convert the district data to a JSON string to serve as "master_json" for this map
+                if hasattr(district_data, "dict"):
+                    district_dict = district_data.dict()
+                elif hasattr(district_data, "model_dump"):
+                    district_dict = district_data.model_dump()
+                else:
+                    district_dict = district_data
                 
-                SDG Indicators:
-                - Water (SDG 6): {w_change}% change.
-                - Vegetation (SDG 15): {g_change}% change.
-                - Urban Heat (SDG 11): {h_change}% change.
-                
-                Keep your answers highly professional, scientific, and strictly based on these telemetry numbers.
-                Act as the GroundTruth AI Copilot. 
-                """
+                context_str += f"\n\nHere is the master_json telemetry data for the currently displayed district:\n{json.dumps(district_dict, indent=2)}"
+                context_str += "\n\nUse this data to answer the user's questions accurately in real-time."
         except Exception as e:
             print(f"Failed to fetch district context: {e}")
-
-    # 3. Construct final prompt
-    prompt = f"{context}\n\nUSER MESSAGE: {request.message}"
+    else:
+        # If no specific district is selected, give a brief overview of the system capabilities
+        context_str += "\n\nThe user is currently looking at the national overview map. No specific district is selected. Ask them to select a district for detailed telemetry data."
 
     try:
-        # 4. Call Gemini using the NEW SDK and 2.0 Flash Model
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=prompt
+        # 3. Call Groq API
+        client = Groq(api_key=api_key)
+        
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": context_str
+                },
+                {
+                    "role": "user",
+                    "content": request.message
+                }
+            ],
+            model="llama-3.1-8b-instant",
+            temperature=0.5,
+            max_tokens=1024,
         )
         
-        return {"reply": response.text}
+        return {"reply": chat_completion.choices[0].message.content}
     except Exception as e:
-        print(f"❌ GEMINI API CRASHED: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Gemini API Error: {str(e)}")
+        print(f"❌ GROQ API CRASHED: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Groq API Error: {str(e)}")

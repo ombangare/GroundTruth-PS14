@@ -123,9 +123,11 @@ export default function DashboardPage() {
     });
 
   return (
-    <main className="min-h-screen flex flex-col">
-      {/* ----------- Header & Ticker ----------- */}
-      <header className="px-6 md:px-10 pt-8">
+
+
+    <main className="min-h-screen flex flex-col bg-[#050811] text-gray-100">
+      {/* ----------- Header ----------- */}
+      <header className="px-6 md:px-10 pt-8 relative z-10 pb-4">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
             <span className="text-2xl group-hover:scale-110 transition-transform">▲</span>
@@ -140,77 +142,34 @@ export default function DashboardPage() {
             >
               ← Back to Overview
             </Link>
-            <div className="hidden md:flex flex-col items-end font-mono text-xs text-ink-muted mr-4 border-r border-space-line pr-4">
-              <span>SOURCE: Sentinel-2 / Bhuvan / Earth Engine</span>
-              <span>ENGINE: NDWI - NDVI - NDBI</span>
-            </div>
             {userRole ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 pointer-events-auto">
                 <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full bg-signal/10 border border-signal/30 text-signal">
                   <User size={12} /> {userRole}
                 </span>
-                <button onClick={handleLogout} className="text-ink-muted hover:text-bad transition-colors" title="Sign out">
+                <button onClick={handleLogout} className="text-gray-400 hover:text-rose-400 transition-colors" title="Sign out">
                   <LogOut size={18} />
                 </button>
               </div>
             ) : (
               <button 
                 onClick={() => setIsLoginModalOpen(true)}
-                className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest px-4 py-2 rounded border border-space-line text-ink-muted hover:text-ink transition-colors"
+                className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest px-4 py-2 rounded border border-white/20 text-gray-300 hover:text-white transition-colors pointer-events-auto"
               >
                 <LogIn size={14} /> Access Node
               </button>
             )}
           </div>
         </div>
-
-        {/* Live ticker strip */}
-        <div className="mt-5 hud-panel overflow-hidden py-1.5 px-4">
-          <div className="ticker-track font-mono text-[11px] text-signal/80">
-            {Array.from({ length: 2 }).map((_, rep) => (
-              <span key={rep} className="inline-flex items-center gap-8 pr-8">
-                <span>DISTRICTS TRACKED: {districts.length}</span>
-                <span className="opacity-40">•</span>
-                <span>LIVE GEE FEEDS: {liveCount}</span>
-                <span className="opacity-40">•</span>
-                <span>DEMO FEEDS: {districts.length - liveCount}</span>
-                <span className="opacity-40">•</span>
-                <span>INDICES: NDWI - NDVI - NDBI</span>
-                <span className="opacity-40">•</span>
-                <span>SDG 6 - 11 - 13 - 15</span>
-              </span>
-            ))}
-          </div>
-        </div>
       </header>
 
-      {/* ----------- Hero: real spinning earth ----------- */}
-      <div className="px-6 md:px-10 py-6 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-        >
-          <p className="font-mono text-xs text-signal uppercase tracking-widest mb-3">
-            SDG Tracking from orbit to ground
-          </p>
-          <h2 className="font-display font-extrabold text-3xl md:text-5xl leading-tight text-ink mb-4">
-            What satellites already know<br />about <span className="text-aurora-gradient">your district.</span>
-          </h2>
-          <p className="text-ink-muted text-base md:text-lg max-w-lg">
-            Free satellite imagery, translated into plain-language SDG progress — water, green cover, and urban heat — for administrators, NGOs, and citizens across India.
-          </p>
-          <p className="font-mono text-xs text-ink-muted/70 mt-4">
-            <span className="inline-block w-2 h-2 rounded-full bg-signal animate-pulse mr-2" />
-            Drag the globe, or click a glowing marker to select a district.
-          </p>
-        </motion.div>
-
+      {/* ----------- Hero ----------- */}
+      <div className="px-6 md:px-10 py-6 w-full max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: "easeOut", delay: 0.15 }}
-          className="hud-panel hud-corners p-2 h-[450px]"
+          className="hud-panel hud-corners p-2 h-[500px] w-full"
         >
           {loading ? (
             <div className="h-full flex items-center justify-center text-ink-muted font-mono text-sm">
@@ -222,7 +181,7 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      <div className="orbit-line mx-6 md:mx-10" />
+
 
       {error && (
         <div className="mx-6 md:mx-10 mt-6 hud-panel px-4 py-4 bg-bad/10 text-bad text-sm font-mono border-bad/50 flex items-center gap-3">
@@ -232,10 +191,10 @@ export default function DashboardPage() {
       )}
 
       {/* ----------- Body ----------- */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6 px-6 md:px-10 py-6">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6 px-6 md:px-10 py-6 relative z-10 pointer-events-none">
         
-        <div className="flex flex-col gap-6">
-          <div className="hud-panel hud-corners p-2 h-[420px]">
+        <div className="flex flex-col gap-6 pointer-events-auto">
+          <div className="bg-black/50 backdrop-blur-xl border border-white/10 p-2 rounded-xl shadow-2xl h-[420px]">
             {loading ? (
               <div className="h-full flex items-center justify-center text-ink-muted font-mono text-sm">
                 Loading district signals...
@@ -245,111 +204,12 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {detail && (
-            <div className="flex flex-col gap-4">
-              <BeforeAfterSlider 
-                district={detail}
-                districtId={detail.id}
-                beforeLabel={detail.period_before}
-                afterLabel={detail.period_after}
-                indicators={detail.indicators}
-                beforeImageUrl={detail.images?.before}
-                afterImageUrl={detail.images?.after}
-                aoiBounds={detail.images?.aoi_bounds}
-                onImageClick={(lat, lon) => { setPoiCoords({ lat, lon }); setAreaBounds(null); }}
-                onAreaSelect={(bounds) => { setAreaBounds(bounds); setPoiCoords(null); }}
-              />
-              {poiCoords && (
-                <PoiChartPanel lat={poiCoords.lat} lon={poiCoords.lon} />
-              )}
-              {areaBounds && (
-                <div id="full-spatial-report" className="mt-8 flex flex-col gap-6">
-                  <div className="hud-panel p-4 bg-[#0a1128] border-cyan-500/40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-[0_0_20px_rgba(8,145,178,0.2)]">
-                    <div>
-                      <h3 className="font-display font-bold text-base text-cyan-400 flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
-                        Spatial Telemetry Analysis — {detail.name}
-                      </h3>
-                      <p className="font-mono text-xs text-ink-muted mt-1">
-                        Bounding Box: [{areaBounds.minLat.toFixed(4)}, {areaBounds.minLon.toFixed(4)}] to [{areaBounds.maxLat.toFixed(4)}, {areaBounds.maxLon.toFixed(4)}]
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => exportElementToPDF("full-spatial-report", `${detail.name}_Full_Spatial_Analysis_Report`)}
-                      className="px-4 py-2.5 bg-gradient-to-r from-cyan-500/30 to-emerald-500/30 hover:from-cyan-500/40 hover:to-emerald-500/40 text-cyan-300 border border-cyan-400/60 rounded-lg font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition shadow-[0_0_15px_rgba(34,211,238,0.3)]"
-                    >
-                      <Download className="w-4 h-4" /> Download Complete Report (PDF)
-                    </button>
-                  </div>
 
-                  <MLAnalysisPanel bounds={areaBounds} districtName={detail.name} />
-                  <ForestAnalysisPanel bounds={areaBounds} districtName={detail.name} />
-                  <DegradationAnalysisPanel bbox={areaBounds} startYear="2018" endYear="2024" districtName={detail.name} />
-                  <UrbanSprawlAnalysisPanel bbox={areaBounds} startYear="2018" endYear="2020" districtName={detail.name} />
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
-        <div className="flex flex-col gap-4">
-          {detail ? (
-            <div className="flex flex-col gap-6">
-              <div className="flex items-baseline justify-between">
-                <div>
-                  <h2 className="font-display font-bold text-xl text-ink">
-                    {detailLoading ? "Scanning orbit..." : detail.name}
-                  </h2>
-                  {detailLoading && (
-                    <span className="inline-block w-4 h-4 border-2 border-signal border-t-transparent rounded-full animate-spin ml-2" />
-                  )}
-                  <p className="text-ink-muted text-sm font-mono mt-1">
-                    {detailLoading ? "Re-aligning satellite arrays..." : `${detail.state} | ${detail.period_before} ➔ ${detail.period_after}`}
-                  </p>
-                </div>
-                <span className={`text-[10px] font-mono px-2 py-1 rounded-full border uppercase tracking-wide ${
-                  detail.data_source === "live" 
-                    ? "text-good border-good" 
-                    : "text-ink-muted border-ink-muted/40"
-                }`}>
-                  {detail.data_source === "live" ? "● live Earth Engine" : "○ demo data"}
-                </span>
-              </div>
+        <div className="flex flex-col gap-4 pointer-events-auto">
 
-              <div className={`transition-opacity duration-300 ${detailLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-                {Object.entries(detail.indicators).map(([key, val]) => (
-                  <IndicatorCard key={key} indicatorKey={key} data={val} />
-                ))}
-              </div>
-
-              {/* REPORT PAGE BUTTON */}
-              <div className="mt-6">
-                <Link
-                  href={`/district/${selectedId}`}
-                  className="block w-full text-center bg-cyan-600/20 hover:bg-cyan-500/40 text-cyan-400 border border-cyan-500/50 font-mono py-3 px-4 rounded shadow-[0_0_15px_rgba(8,145,178,0.3)] transition-all uppercase tracking-widest text-sm"
-                >
-                  Analyze District Health Score ➔
-                </Link>
-              </div>
-
-            </div>
-          ) : detailLoading ? (
-            <div className="hud-panel p-6 text-signal font-mono text-sm flex items-center gap-3">
-              <span className="inline-block w-3 h-3 border-2 border-signal border-t-transparent rounded-full animate-spin" />
-              Querying satellite indicators for {selectedId}...
-            </div>
-          ) : detailError ? (
-            <div className="hud-panel p-6 bg-bad/10 text-bad font-mono text-sm border-bad/50 flex items-start gap-3">
-              <span className="text-xl">⚠</span>
-              <p className="mt-1">{detailError}</p>
-            </div>
-          ) : (
-            <div className="hud-panel p-6 text-ink-muted font-mono text-sm">
-              Select a district on the globe or map to view its SDG signal breakdown.
-            </div>
-          )}
-
-          <div className="hud-panel p-4">
+          <div className="bg-black/50 backdrop-blur-xl border border-white/10 p-4 rounded-xl shadow-2xl h-[420px] flex flex-col">
             <div className="flex items-center justify-between mb-3">
               <p className="font-mono text-xs text-ink-muted uppercase">
                 All districts ({filteredDistricts.length})
@@ -386,7 +246,16 @@ export default function DashboardPage() {
               className="w-full mb-3 px-3 py-2 rounded-lg bg-space-line/40 border border-space-line text-sm text-ink placeholder:text-ink-muted/60 font-mono focus:outline-none focus:border-signal/50"
             />
             
-            <div className="flex flex-col gap-2 max-h-80 overflow-y-auto pr-1">
+            <div className="flex flex-col gap-2 overflow-y-auto pr-1 flex-1 hide-scrollbar">
+              <style jsx>{`
+                .hide-scrollbar::-webkit-scrollbar {
+                  display: none;
+                }
+                .hide-scrollbar {
+                  scrollbar-width: none;
+                  -ms-overflow-style: none;
+                }
+              `}</style>
               {filteredDistricts.map((d) => (
                 <button
                   key={d.id}
@@ -417,6 +286,112 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* ----------- Full Width Horizontal Selected District Section ----------- */}
+      <div className="relative z-10 w-full pointer-events-auto bg-black/60 backdrop-blur-2xl border-y border-white/5 py-10 mt-6">
+        <div className="px-6 md:px-10 mx-auto w-full">
+          {detail ? (
+            <div className="flex flex-col xl:flex-row gap-12 w-full items-center">
+              {/* Left Side: Info */}
+              <div className="flex flex-col w-full xl:w-1/3 justify-center">
+                <div className="flex flex-wrap items-center gap-4 mb-2">
+                  <h2 className="font-display font-black text-4xl md:text-5xl text-white tracking-tight">
+                    {detailLoading ? "Scanning orbit..." : detail.name}
+                  </h2>
+                  <span className={`text-xs font-mono px-3 py-1.5 rounded-full border uppercase tracking-widest whitespace-nowrap mt-1 md:mt-0 ${
+                    detail.data_source === "live" 
+                      ? "text-cyan-400 border-cyan-400/50 bg-cyan-950/30 shadow-[0_0_10px_rgba(34,211,238,0.2)]" 
+                      : "text-gray-400 border-gray-400/50 bg-gray-900/50"
+                  }`}>
+                    {detail.data_source === "live" ? "● live Earth Engine" : "○ demo data"}
+                  </span>
+                </div>
+                <p className="text-gray-400 font-mono text-sm uppercase tracking-widest mt-2">
+                  {detailLoading ? "Re-aligning satellite arrays..." : `${detail.state}  |  ${detail.period_before} ➔ ${detail.period_after}`}
+                </p>
+                <div className="mt-8">
+                  <Link
+                    href={`/district/${selectedId}`}
+                    className="inline-flex items-center justify-center bg-gradient-to-r from-cyan-600/30 to-emerald-600/30 hover:from-cyan-500/40 hover:to-emerald-500/40 text-cyan-300 border border-cyan-500/50 font-mono py-4 px-8 rounded-lg shadow-[0_0_20px_rgba(8,145,178,0.3)] transition-all uppercase tracking-widest text-sm font-bold w-full sm:w-auto"
+                  >
+                    Analyze District Health Score ➔
+                  </Link>
+                </div>
+              </div>
+
+              {/* Right Side: Horizontal Indicators */}
+              <div className={`w-full xl:w-2/3 grid grid-cols-1 md:grid-cols-3 gap-6 transition-opacity duration-300 ${detailLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                {Object.entries(detail.indicators).map(([key, val]) => (
+                  <div key={key} className="h-full">
+                    <IndicatorCard indicatorKey={key} data={val} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : detailLoading ? (
+            <div className="text-cyan-400 font-mono text-sm flex items-center justify-center gap-3 h-full py-10">
+              <span className="inline-block w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+              Querying orbital telemetry for {selectedId}...
+            </div>
+          ) : detailError ? (
+            <div className="bg-rose-950/20 p-4 text-rose-400 font-mono text-sm border border-rose-500/20 rounded-lg flex items-center justify-center gap-3 h-full py-10">
+              <span className="text-xl">⚠</span>
+              <p>{detailError}</p>
+            </div>
+          ) : (
+            <div className="text-gray-500 font-mono text-sm flex items-center justify-center h-full py-10">
+              Select a district on the globe or map to view its SDG signal breakdown.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ----------- Full Width Reports ----------- */}
+      {detail && (
+        <div className="px-6 md:px-10 py-6 flex flex-col gap-8 pointer-events-auto relative z-10 w-full max-w-7xl mx-auto">
+          <BeforeAfterSlider 
+            district={detail}
+            districtId={detail.id}
+            beforeLabel={detail.period_before}
+            afterLabel={detail.period_after}
+            indicators={detail.indicators}
+            beforeImageUrl={detail.images?.before}
+            afterImageUrl={detail.images?.after}
+            aoiBounds={detail.images?.aoi_bounds}
+            onImageClick={(lat, lon) => { setPoiCoords({ lat, lon }); setAreaBounds(null); }}
+            onAreaSelect={(bounds) => { setAreaBounds(bounds); setPoiCoords(null); }}
+          />
+          {poiCoords && (
+            <PoiChartPanel lat={poiCoords.lat} lon={poiCoords.lon} />
+          )}
+          {areaBounds && (
+            <div id="full-spatial-report" className="mt-8 flex flex-col gap-6">
+              <div className="bg-black/50 backdrop-blur-xl border border-cyan-500/30 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-[0_0_20px_rgba(8,145,178,0.2)]">
+                <div>
+                  <h3 className="font-display font-bold text-base text-cyan-400 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
+                    Spatial Telemetry Analysis — {detail.name}
+                  </h3>
+                  <p className="font-mono text-xs text-gray-400 mt-1">
+                    Bounding Box: [{areaBounds.minLat.toFixed(4)}, {areaBounds.minLon.toFixed(4)}] to [{areaBounds.maxLat.toFixed(4)}, {areaBounds.maxLon.toFixed(4)}]
+                  </p>
+                </div>
+                <button
+                  onClick={() => exportElementToPDF("full-spatial-report", `${detail.name}_Full_Spatial_Analysis_Report`)}
+                  className="px-4 py-2.5 bg-gradient-to-r from-cyan-500/30 to-emerald-500/30 hover:from-cyan-500/40 hover:to-emerald-500/40 text-cyan-300 border border-cyan-400/60 rounded-lg font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition shadow-[0_0_15px_rgba(34,211,238,0.3)]"
+                >
+                  <Download className="w-4 h-4" /> Download Complete Report (PDF)
+                </button>
+              </div>
+
+              <MLAnalysisPanel bounds={areaBounds} districtName={detail.name} />
+              <ForestAnalysisPanel bounds={areaBounds} districtName={detail.name} />
+              <DegradationAnalysisPanel bbox={areaBounds} startYear="2018" endYear="2024" districtName={detail.name} />
+              <UrbanSprawlAnalysisPanel bbox={areaBounds} startYear="2018" endYear="2020" districtName={detail.name} />
+            </div>
+          )}
+        </div>
+      )}
 
       <footer className="px-6 md:px-10 py-5 text-center text-ink-muted text-xs font-mono">
         Built for SDG tracking • India-wide • Powered by Sentinel-2 &amp; Google Earth Engine
