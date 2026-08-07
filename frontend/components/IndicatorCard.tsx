@@ -31,7 +31,7 @@ interface Props {
 export default function IndicatorCard({ indicatorKey, data }: Props) {
   const style = SEVERITY_STYLES[data.severity] ?? SEVERITY_STYLES.pending;
   const accent = INDICATOR_ACCENT[indicatorKey] ?? "#22D3EE";
-  const isPending = data.severity === "pending" || data.pct_change === null;
+  const isPending = data.severity === "pending" || data.pct_change == null;
   const magnitude = isPending ? 0 : Math.min(Math.abs(data.pct_change as number), 100);
 
   return (
@@ -75,21 +75,24 @@ export default function IndicatorCard({ indicatorKey, data }: Props) {
 
       <div className="flex justify-between font-mono text-xs text-ink-muted">
         <span>Before: {data.before_value ?? "—"}</span>
-        {isPending ? (
+        {isPending || data.pct_change === undefined ? (
           <span className="text-ink-muted">—</span>
         ) : (
-          <span
-            className={
-              (data.pct_change as number) < 0
-                ? "text-bad"
-                : (data.pct_change as number) > 0
-                ? "text-warn"
-                : "text-good"
-            }
-          >
-            {(data.pct_change as number) > 0 ? "+" : ""}
-            {data.pct_change}%
-          </span>
+          <div className="flex flex-col items-center">
+            <span
+              className={
+                (data.pct_change as number) < 0
+                  ? "text-bad"
+                  : (data.pct_change as number) > 0
+                  ? "text-warn"
+                  : "text-good"
+              }
+            >
+              {(data.change_value as number) > 0 ? "+" : ""}
+              {data.change_value} {indicatorKey === "urban_heat" ? "points" : "km²"}
+            </span>
+            <span className="text-[9px] opacity-60">({(data.pct_change as number) > 0 ? "+" : ""}{data.pct_change}%)</span>
+          </div>
         )}
         <span>After: {data.after_value ?? "—"}</span>
       </div>

@@ -248,6 +248,7 @@ export default function Home() {
                 indicators={detail.indicators}
                 beforeImageUrl={detail.images?.before}
                 afterImageUrl={detail.images?.after}
+                aoiBounds={detail.images?.aoi_bounds}
                 onImageClick={(lat, lon) => { setPoiCoords({ lat, lon }); setAreaBounds(null); }}
                 onAreaSelect={(bounds) => { setAreaBounds(bounds); setPoiCoords(null); }}
               />
@@ -256,10 +257,10 @@ export default function Home() {
               )}
               {areaBounds && (
                 <div className="mt-8 grid grid-cols-1 gap-8">
-                  <MLAnalysisPanel bounds={areaBounds} />
-                  <ForestAnalysisPanel bounds={areaBounds} />
-                  <DegradationAnalysisPanel bbox={areaBounds} startYear="2018" endYear="2024" />
-                  <UrbanSprawlAnalysisPanel bbox={areaBounds} startYear="2018" endYear="2020" />
+                  <MLAnalysisPanel bounds={areaBounds} districtName={detail.name} />
+                  <ForestAnalysisPanel bounds={areaBounds} districtName={detail.name} />
+                  <DegradationAnalysisPanel bbox={areaBounds} startYear="2018" endYear="2024" districtName={detail.name} />
+                  <UrbanSprawlAnalysisPanel bbox={areaBounds} startYear="2018" endYear="2020" districtName={detail.name} />
                 </div>
               )}
             </div>

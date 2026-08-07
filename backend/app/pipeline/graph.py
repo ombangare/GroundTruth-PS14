@@ -49,7 +49,13 @@ async def comprehensive_analysis(state: GraphState) -> GraphState:
 async def report_generation(state: GraphState) -> GraphState:
     prompt = f"""
     Compile the following analysis into a cohesive, highly professional executive summary markdown report.
-    Do not include pleasantries. Make it authoritative.
+    
+    CRITICAL REQUIREMENTS:
+    - Do not use long, dense paragraphs.
+    - Use SHORT, punchy bullet points and concise sentences that are easy to scan for human readers.
+    - Emphasize key numbers and metrics in bold.
+    - Format with clear H1, H2, and H3 headers.
+    - Do not include pleasantries. Make it authoritative.
     
     Analysis to compile:
     {state.get('comprehensive_analysis')}
@@ -122,8 +128,15 @@ async def stream_pipeline_analysis(sdg_target: str, payload: Dict[str, Any]) -> 
 
     # Stream Final Report using the heavy 70b model
     prompt = f"""
-    Compile the following analysis into a cohesive, highly professional executive summary markdown report. 
-    Do not include pleasantries.
+    Compile the following analysis into an ULTRA-CONCISE, highly readable executive summary markdown report.
+    
+    CRITICAL REQUIREMENTS:
+    - MAXIMUM 150 WORDS TOTAL.
+    - Do not use long, dense paragraphs.
+    - Use SHORT, punchy bullet points. Keep each bullet to 1 line ONLY.
+    - Omit all unnecessary fluff or conversational text. JUST THE FACTS.
+    - Emphasize key numbers and metrics in bold.
+    - Format with clear H1, H2, and H3 headers.
     
     Analysis: {final_state.get('comprehensive_analysis')}
     """

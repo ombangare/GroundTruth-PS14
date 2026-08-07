@@ -12,6 +12,7 @@ interface Props {
   indicators: Record<string, IndicatorDetail>;
   beforeImageUrl?: string | null;
   afterImageUrl?: string | null;
+  aoiBounds?: { minLon: number; maxLon: number; minLat: number; maxLat: number } | null;
   onImageClick?: (lat: number, lon: number) => void;
   onAreaSelect?: (bounds: {minLat: number, maxLat: number, minLon: number, maxLon: number}) => void;
 }
@@ -24,6 +25,7 @@ export default function BeforeAfterSlider({
   indicators,
   beforeImageUrl,
   afterImageUrl,
+  aoiBounds,
   onImageClick,
   onAreaSelect,
 }: Props) {
@@ -54,21 +56,26 @@ export default function BeforeAfterSlider({
     if (!district || !onAreaSelect || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     
-    const boundsSizeDeg = 0.045; // ~5km buffer used in GEE
-    const minLon = district.lon - boundsSizeDeg;
-    const maxLon = district.lon + boundsSizeDeg;
-    const minLat = district.lat - boundsSizeDeg;
-    const maxLat = district.lat + boundsSizeDeg;
+    // Use the real AOI bounds from the backend if available, otherwise
+    // fall back to the hardcoded ±0.045° estimate around the centroid
+    const minLon = aoiBounds?.minLon ?? (district.lon - 0.045);
+    const maxLon = aoiBounds?.maxLon ?? (district.lon + 0.045);
+    const minLat = aoiBounds?.minLat ?? (district.lat - 0.045);
+    const maxLat = aoiBounds?.maxLat ?? (district.lat + 0.045);
 
     const minXPct = x / rect.width;
     const maxXPct = (x + w) / rect.width;
     const minYPct = y / rect.height;
     const maxYPct = (y + h) / rect.height;
 
+    // For longitude: x goes 0 -> width, longitude goes minLon -> maxLon
     const lon1 = minLon + (minXPct * (maxLon - minLon));
     const lon2 = minLon + (maxXPct * (maxLon - minLon));
-    const lat1 = maxLat - (maxYPct * (maxLat - minLat)); // lower lat
-    const lat2 = maxLat - (minYPct * (maxLat - minLat)); // higher lat
+    
+    // For latitude: y goes 0 -> height, but latitude goes maxLat -> minLat
+    // Top of image (y=0) is maxLat, bottom of image (y=height) is minLat
+    const lat1 = maxLat - (maxYPct * (maxLat - minLat)); // bottom edge of box
+    const lat2 = maxLat - (minYPct * (maxLat - minLat)); // top edge of box
 
     onAreaSelect({ minLat: lat1, maxLat: lat2, minLon: lon1, maxLon: lon2 });
   };
@@ -108,15 +115,15 @@ export default function BeforeAfterSlider({
 
     if (widthPx < 5 && heightPx < 5) {
       if (onImageClick) {
-        const boundsSizeDeg = 0.045;
-        const minLon = district.lon - boundsSizeDeg;
-        const maxLon = district.lon + boundsSizeDeg;
-        const minLat = district.lat - boundsSizeDeg;
-        const maxLat = district.lat + boundsSizeDeg;
+        const minLon = aoiBounds?.minLon ?? (district.lon - 0.045);
+        const maxLon = aoiBounds?.maxLon ?? (district.lon + 0.045);
+        const minLat = aoiBounds?.minLat ?? (district.lat - 0.045);
+        const maxLat = aoiBounds?.maxLat ?? (district.lat + 0.045);
         
         const xPct = drawStart.x / rect.width;
         const yPct = drawStart.y / rect.height;
         const clickLon = minLon + (xPct * (maxLon - minLon));
+        // For latitude, y=0 is maxLat, y=1 is minLat
         const clickLat = maxLat - (yPct * (maxLat - minLat));
         onImageClick(clickLat, clickLon);
       }
@@ -199,7 +206,7 @@ export default function BeforeAfterSlider({
             <img 
               src={afterImageUrl} 
               alt={`${afterLabel} satellite view`} 
-              className="w-full h-full object-cover" 
+              className="w-full h-full object-fill" 
               onError={() => setAfterError(true)} 
             />
           ) : (
@@ -218,7 +225,7 @@ export default function BeforeAfterSlider({
             <img 
               src={beforeImageUrl} 
               alt={`${beforeLabel} satellite view`} 
-              className="w-full h-full object-cover" 
+              className="w-full h-full object-fill" 
               onError={() => setBeforeError(true)} 
             />
           ) : (

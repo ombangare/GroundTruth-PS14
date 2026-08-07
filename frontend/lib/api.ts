@@ -23,6 +23,7 @@ export interface IndicatorDetail {
   index_used: string;
   before_value: number | null;
   after_value: number | null;
+  change_value: number | null;
   pct_change: number | null;
   severity: Severity;
   verdict: string;
@@ -30,7 +31,7 @@ export interface IndicatorDetail {
 
 export interface DistrictDetail extends Omit<DistrictSummary, "indicator_summary"> {
   indicators: Record<string, IndicatorDetail>;
-  images: { before: string | null; after: string | null };
+  images: { before: string | null; after: string | null; aoi_bounds?: { minLon: number; maxLon: number; minLat: number; maxLat: number } };
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
@@ -130,7 +131,7 @@ export async function fetchDistrict(id: string, yearBefore?: number, yearAfter?:
   return res.json();
 }
 
-export async function fetchDistrictImages(id: string, yearBefore?: number, yearAfter?: number): Promise<{ before: string | null; after: string | null }> {
+export async function fetchDistrictImages(id: string, yearBefore?: number, yearAfter?: number): Promise<{ before: string | null; after: string | null; aoi_bounds?: { minLon: number; maxLon: number; minLat: number; maxLat: number } }> {
   const params = new URLSearchParams();
   if (yearBefore) params.append("year_before", yearBefore.toString());
   if (yearAfter) params.append("year_after", yearAfter.toString());

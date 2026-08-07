@@ -151,15 +151,21 @@ def analyze_wetland_health(min_lat: float, max_lat: float, min_lon: float, max_l
                 "rainfall_mm": total_rainfall.get('precipitation')
             })
 
-        payload = ee.Dictionary({
-            "start": get_yearly_stats(start_year),
-            "end": get_yearly_stats(end_year)
-        })
+        yearly_payload = {}
+        for y in range(int(start_year), int(end_year) + 1):
+            yearly_payload[str(y)] = get_yearly_stats(y)
+
+        payload = ee.Dictionary(yearly_payload)
 
         res = payload.getInfo()
         
-        start_data = res.get('start', {})
-        end_data = res.get('end', {})
+        start_data = res.get(str(start_year), {})
+        end_data = res.get(str(end_year), {})
+        
+        time_series = []
+        for y in range(int(start_year), int(end_year) + 1):
+            val = res.get(str(y), {}).get("wetland_sqkm") or 0
+            time_series.append({"name": str(y), "area": round(val, 2)})
 
         wetland_start = start_data.get('wetland_sqkm') or 0
         wetland_end = end_data.get('wetland_sqkm') or 0
@@ -197,7 +203,8 @@ def analyze_wetland_health(min_lat: float, max_lat: float, min_lon: float, max_l
             "ndvi_end": round(ndvi_end, 2),
             "rain_start": round(rain_start, 0),
             "rain_end": round(rain_end, 0),
-            "main_cause": cause
+            "main_cause": cause,
+            "time_series": time_series
         }
     except Exception as e:
         print(f"[gee_wetlands] wetland health analysis failed: {e}")

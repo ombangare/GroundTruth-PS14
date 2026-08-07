@@ -48,20 +48,27 @@ def analyze_forest_cover(min_lat: float, max_lat: float, min_lon: float, max_lon
             forest_area = pixel_area.updateMask(forest_mask).reduceRegion(
                 reducer=ee.Reducer.sum(), geometry=aoi, scale=10, maxPixels=1e10
             )
-            return ee.Dictionary({
-                "forest_sqkm": ee.Number(forest_area.get('area')).divide(1_000_000)
-            })
+            return ee.Number(forest_area.get('area')).divide(1_000_000)
+            
+        yearly_payload = {}
+        for y in range(int(start_year), int(end_year) + 1):
+            yearly_payload[str(y)] = get_forest_stats(y)
             
         payload = ee.Dictionary({
-            "start": get_forest_stats(start_year),
-            "end": get_forest_stats(end_year),
+            "yearly_data": ee.Dictionary(yearly_payload),
             "total_area_sqkm": ee.Number(aoi.area()).divide(1_000_000)
         })
         
         res = payload.getInfo()
         
-        start_sqkm = res.get('start', {}).get('forest_sqkm') or 0
-        end_sqkm = res.get('end', {}).get('forest_sqkm') or 0
+        yearly_data = res.get('yearly_data', {})
+        start_sqkm = yearly_data.get(str(start_year)) or 0
+        end_sqkm = yearly_data.get(str(end_year)) or 0
+        
+        time_series = []
+        for y in range(int(start_year), int(end_year) + 1):
+            val = yearly_data.get(str(y)) or 0
+            time_series.append({"name": str(y), "area": round(val, 2)})
         total_sqkm = res.get('total_area_sqkm') or 1
         
         loss_sqkm = start_sqkm - end_sqkm
@@ -79,7 +86,8 @@ def analyze_forest_cover(min_lat: float, max_lat: float, min_lon: float, max_lon
             "forest_loss_pct": round(loss_pct, 1),
             "start_proportion": round(start_proportion, 1),
             "end_proportion": round(end_proportion, 1),
-            "total_area": round(total_sqkm, 2)
+            "total_area": round(total_sqkm, 2),
+            "time_series": time_series
         }
     except Exception as e:
         print(f"[gee_forests] forest analysis failed: {e}")

@@ -18,14 +18,7 @@ def analyze_urban_sprawl(min_lat: float, max_lat: float, min_lon: float, max_lon
         if years <= 0:
             years = 1
 
-        coords = [
-            [min_lon, min_lat],
-            [min_lon, max_lat],
-            [max_lon, max_lat],
-            [max_lon, min_lat],
-            [min_lon, min_lat]
-        ]
-        aoi = ee.Geometry.Polygon(coords)
+        aoi = ee.Geometry.Rectangle([min_lon, min_lat, max_lon, max_lat])
 
         # 1. Built-up Area (Dynamic World - Class 6 is built)
         def get_built_area(year):
@@ -88,6 +81,28 @@ def analyze_urban_sprawl(min_lat: float, max_lat: float, min_lon: float, max_lon
         forest_lost_req = ee.Image.pixelArea().updateMask(forest_to_urban).reduceRegion(
             reducer=ee.Reducer.sum(), geometry=aoi, scale=100, maxPixels=1e10
         )
+        
+        # Exact New Urban Area
+        new_urban_req = ee.Image.pixelArea().updateMask(new_urban_mask).reduceRegion(
+            reducer=ee.Reducer.sum(), geometry=aoi, scale=100, maxPixels=1e10
+        )
+
+        # Generate Map Thumbnail
+        s2_bg = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+                 .filterBounds(aoi)
+                 .filterDate(f"{end_year}-01-01", f"{end_year}-12-31")
+                 .median()
+                 .visualize(bands=['B4', 'B3', 'B2'], min=0, max=3000))
+                 
+        base_urban_vis = dw_start.eq(6).selfMask().visualize(palette=['#ff0000']) # Red for base/original urban
+        urban_vis = new_urban_mask.selfMask().visualize(palette=['#8a2be2']) # Purple for new growth
+        map_image = ee.ImageCollection([s2_bg, base_urban_vis, urban_vis]).mosaic()
+        map_url = map_image.getThumbURL({
+            'dimensions': 600,
+            'region': aoi,
+            'crs': 'EPSG:3857',
+            'format': 'png'
+        })
 
         payload = ee.Dictionary({
             "built_start": ee.Number(built_start_req).divide(1_000_000),
@@ -95,7 +110,8 @@ def analyze_urban_sprawl(min_lat: float, max_lat: float, min_lon: float, max_lon
             "pop_start": ee.Number(pop_start_req),
             "pop_end": ee.Number(pop_end_req),
             "agri_lost": ee.Number(agri_lost_req.get('area')).divide(1_000_000),
-            "forest_lost": ee.Number(forest_lost_req.get('area')).divide(1_000_000)
+            "forest_lost": ee.Number(forest_lost_req.get('area')).divide(1_000_000),
+            "new_urban_sqkm": ee.Number(new_urban_req.get('area')).divide(1_000_000)
         })
 
         res = payload.getInfo()
@@ -137,16 +153,18 @@ def analyze_urban_sprawl(min_lat: float, max_lat: float, min_lon: float, max_lon
         return {
             "start_year": start_year,
             "end_year": end_year,
-            "built_start_sqkm": round(built_start, 2),
-            "built_end_sqkm": round(built_end, 2),
+            "built_start_sqkm": round(built_start, 4),
+            "built_end_sqkm": round(built_end, 4),
             "pop_start": int(pop_start),
             "pop_end": int(pop_end),
             "lcr": round(lcr, 4),
             "pgr": round(pgr, 4),
             "lcr_pgr_ratio": round(lcr_pgr_ratio, 2),
             "status": status,
-            "agri_lost_sqkm": round(res.get('agri_lost') or 0, 2),
-            "forest_lost_sqkm": round(res.get('forest_lost') or 0, 2)
+            "new_urban_sqkm": round(res.get('new_urban_sqkm') or 0, 4),
+            "agri_lost_sqkm": round(res.get('agri_lost') or 0, 4),
+            "forest_lost_sqkm": round(res.get('forest_lost') or 0, 4),
+            "map_url": map_url
         }
 
     except Exception as e:

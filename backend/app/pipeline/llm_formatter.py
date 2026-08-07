@@ -22,7 +22,8 @@ def format_for_llm(sdg_target: str, raw_data: Dict[str, Any], payload: Dict[str,
             "centroid": {
                 "latitude": (payload["minLat"] + payload["maxLat"]) / 2,
                 "longitude": (payload["minLon"] + payload["maxLon"]) / 2
-            }
+            },
+            "district_name_override": payload.get("districtName", "Unknown")
         },
         "temporal_context": {
             "baseline_year": start_year,
@@ -136,7 +137,7 @@ def format_for_llm(sdg_target: str, raw_data: Dict[str, Any], payload: Dict[str,
             },
             "quantitative_findings": {
                 "lcr_pgr_ratio": ratio,
-                "total_urban_expansion_sqkm": round(raw_data.get("built_end_sqkm", 0) - raw_data.get("built_start_sqkm", 0), 2),
+                "total_urban_expansion_sqkm": raw_data.get("new_urban_sqkm", 0),
                 "land_consumption_rate": raw_data.get("lcr", 0),
                 "population_growth_rate": raw_data.get("pgr", 0),
                 "agricultural_land_consumed_sqkm": raw_data.get("agri_lost_sqkm", 0),

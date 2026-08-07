@@ -16,6 +16,7 @@ class AreaRequest(BaseModel):
     maxLon: float
     startYear: Optional[str] = "2018"
     endYear: Optional[str] = "2024"
+    districtName: Optional[str] = None
 
 class PipelineRequest(AreaRequest):
     sdg_target: str

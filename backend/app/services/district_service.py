@@ -122,6 +122,7 @@ def _build_indicator_result(indicator_key: str, indicator: dict, district_name: 
         "before_value": before_val,
         "after_value": after_val,
         "change_value": round(after_val - before_val, 2),
+        "pct_change": pct,
         "severity": severity,
         "verdict": verdict,
     }
@@ -342,6 +343,7 @@ def _build_climate_composite(indicator_results: dict, district_name: str, period
         "before_value": total - declining,
         "after_value": declining,
         "change_value": declining,
+        "pct_change": _pct_change(total - declining, declining) if total - declining > 0 else 0,
         "severity": severity,
         "verdict": verdict,
     }

@@ -135,13 +135,33 @@ def _build_aoi(lat: float, lon: float, buffer_m: int, district: dict | None = No
 
 
 def get_district_images(lat: float, lon: float, before_year: str, after_year: str, buffer_m: int = 5000, district: dict | None = None) -> dict:
-    """Returns real before/after base64 images for a district."""
-    import requests
-    import base64
-    
+    """Returns real before/after satellite image URLs and the actual AOI bounding box."""
     aoi = _build_aoi(lat, lon, buffer_m, district)
     
-    def fetch_b64(year):
+    # Compute the actual bounding box of the AOI so the frontend can do
+    # accurate pixel-to-coordinate mapping
+    try:
+        bbox_coords = aoi.bounds().getInfo()["coordinates"][0]
+        # bbox_coords is [[minLon, minLat], [maxLon, minLat], [maxLon, maxLat], [minLon, maxLat], [minLon, minLat]]
+        lons = [c[0] for c in bbox_coords]
+        lats = [c[1] for c in bbox_coords]
+        aoi_bounds = {
+            "minLon": min(lons),
+            "maxLon": max(lons),
+            "minLat": min(lats),
+            "maxLat": max(lats),
+        }
+    except Exception as e:
+        print(f"[gee_service] Failed to compute AOI bounds: {e}")
+        # Fallback to the old hardcoded approach
+        aoi_bounds = {
+            "minLon": lon - 0.045,
+            "maxLon": lon + 0.045,
+            "minLat": lat - 0.045,
+            "maxLat": lat + 0.045,
+        }
+    
+    def fetch_url(year):
         try:
             url = get_thumbnail_url(aoi, year)
             return url
@@ -149,8 +169,9 @@ def get_district_images(lat: float, lon: float, before_year: str, after_year: st
             return None
 
     return {
-        "before": fetch_b64(before_year),
-        "after": fetch_b64(after_year),
+        "before": fetch_url(before_year),
+        "after": fetch_url(after_year),
+        "aoi_bounds": aoi_bounds,
     }
 
 
