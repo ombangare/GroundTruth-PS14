@@ -9,10 +9,10 @@ importers:
   .:
     dependencies:
       '@react-three/drei':
-        specifier: ^9.111.3
+        specifier: ^9.122.0
         version: 9.122.0(@react-three/fiber@8.18.0(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.166.1))(@types/react@18.3.31)(@types/three@0.185.4)(immer@11.1.16)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.166.1)(use-sync-external-store@1.6.0(react@18.3.1))
       '@react-three/fiber':
-        specifier: ^8.17.5
+        specifier: ^8.18.0
         version: 8.18.0(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(three@0.166.1)
       '@supabase/supabase-js':
         specifier: ^2.112.0
@@ -53,9 +53,15 @@ importers:
       recharts:
         specifier: ^3.10.1
         version: 3.10.1(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react-is@16.13.1)(react@18.3.1)(redux@5.0.1)
+      simplex-noise:
+        specifier: ^4.0.3
+        version: 4.0.3
       three:
         specifier: ^0.166.1
         version: 0.166.1
+      three-stdlib:
+        specifier: ^2.36.1
+        version: 2.36.1(three@0.166.1)
     devDependencies:
       '@types/leaflet':
         specifier: ^1.9.12
@@ -1269,6 +1275,9 @@ packages:
   shebang-regex@3.0.0:
     resolution: {integrity: sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==}
     engines: {node: '>=8'}
+
+  simplex-noise@4.0.3:
+    resolution: {integrity: sha512-qSE2I4AngLQG7BXqoZj51jokT4WUXe8mOBrvfOXpci8+6Yu44+/dD5zqDpOx3Ux792eamTd2lLcI8jqFntk/lg==}
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -2795,6 +2804,8 @@ snapshots:
       shebang-regex: 3.0.0
 
   shebang-regex@3.0.0: {}
+
+  simplex-noise@4.0.3: {}
 
   source-map-js@1.2.1: {}
 

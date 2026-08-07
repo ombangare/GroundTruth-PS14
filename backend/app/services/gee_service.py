@@ -45,9 +45,22 @@ def init_earth_engine() -> bool:
 
     service_account = os.environ.get("GEE_SERVICE_ACCOUNT_EMAIL")
     key_path = os.environ.get("GEE_SERVICE_ACCOUNT_KEY_PATH")
+    json_content = os.environ.get("GEE_JSON_CONTENT")
     project_id = os.environ.get("GEE_PROJECT_ID")
 
-    if not (service_account and key_path and project_id):
+    if not (service_account and project_id):
+        return False
+        
+    if json_content:
+        # On Heroku, we inject the raw JSON into an environment variable
+        # Write it to a temp file so Earth Engine can load it
+        import tempfile
+        fd, temp_path = tempfile.mkstemp()
+        with open(temp_path, "w") as f:
+            f.write(json_content)
+        key_path = temp_path
+
+    if not key_path:
         return False
 
     try:

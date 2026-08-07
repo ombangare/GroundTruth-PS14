@@ -20,8 +20,8 @@ def validate_env():
     
     if not GEE_SERVICE_ACCOUNT_EMAIL:
         missing.append("GEE_SERVICE_ACCOUNT_EMAIL")
-    if not GEE_SERVICE_ACCOUNT_KEY_PATH:
-        missing.append("GEE_SERVICE_ACCOUNT_KEY_PATH")
+    if not GEE_SERVICE_ACCOUNT_KEY_PATH and not os.environ.get("GEE_JSON_CONTENT"):
+        missing.append("GEE_SERVICE_ACCOUNT_KEY_PATH (or GEE_JSON_CONTENT)")
     if not GEE_PROJECT_ID:
         missing.append("GEE_PROJECT_ID")
     if not GEE_ASSET_DISTRICT_BOUNDARY:

@@ -17,7 +17,7 @@ export default function UrbanSprawlAnalysisPanel({ bbox, startYear, endYear, dis
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
+  const [viewMode, setViewMode] = useState<"map" | "chart" | "table">("map");
 
   const DEMO_DATA = {
     llm_analysis: `# Urban Sprawl Assessment — ${districtName || "Selected Region"}\n\n## Key Findings\n- **Built-up area** expanded from 45 km² → 63 km² (+40%)\n- Land Consumption Rate (LCR): **0.048** vs Population Growth Rate (PGR): **0.022**\n- LCR/PGR ratio of **2.18** indicates unsustainable urban sprawl\n\n## Risk Assessment\n- 🏗️ **High risk** — urban expansion outpacing population growth by 2x\n- **11 km² of agricultural land** converted to built-up\n\n## Recommendations\n- Implement **vertical densification** policies in existing urban cores\n- Enforce **urban growth boundaries** around satellite towns`,
@@ -27,7 +27,8 @@ export default function UrbanSprawlAnalysisPanel({ bbox, startYear, endYear, dis
       pop_start: 780000, pop_end: 910000,
       lcr: 0.048, pgr: 0.022, lcr_pgr_ratio: 2.18,
       status: "Urban Sprawl",
-      agri_lost_sqkm: 11.0, forest_lost_sqkm: 3.0
+      agri_lost_sqkm: 11.0, forest_lost_sqkm: 3.0,
+      map_url: "https://via.placeholder.com/600x400/050811/8a2be2?text=Geospatial+Map+Awaiting+Data"
     }
   };
 
@@ -192,6 +193,12 @@ export default function UrbanSprawlAnalysisPanel({ bbox, startYear, endYear, dis
                 </h3>
                 <div className="flex items-center gap-1 bg-space-line/20 p-1 rounded">
                   <button
+                    onClick={() => setViewMode("map")}
+                    className={`px-2 py-0.5 text-[9px] font-mono rounded ${viewMode === "map" ? "bg-indigo-500/30 text-indigo-300 font-bold" : "text-ink-muted hover:text-white"}`}
+                  >
+                    Map
+                  </button>
+                  <button
                     onClick={() => setViewMode("chart")}
                     className={`px-2 py-0.5 text-[9px] font-mono rounded ${viewMode === "chart" ? "bg-indigo-500/30 text-indigo-300 font-bold" : "text-ink-muted hover:text-white"}`}
                   >
@@ -206,7 +213,15 @@ export default function UrbanSprawlAnalysisPanel({ bbox, startYear, endYear, dis
                 </div>
               </div>
 
-              {viewMode === "chart" ? (
+              {viewMode === "map" ? (
+                <div className="w-full h-64 mt-2 overflow-hidden rounded-lg border border-space-line/50 relative">
+                  <img src={rawData?.map_url || "https://via.placeholder.com/600x400/050811/8a2be2?text=Map+Error"} alt="Urban Sprawl Map" className="w-full h-full object-fill" />
+                  <div className="absolute bottom-2 left-2 flex flex-col gap-1 text-[8px] font-mono bg-black/60 p-1.5 rounded backdrop-blur border border-white/10">
+                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#ff0000]"></div><span className="text-white">Base Urban</span></div>
+                    <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#8a2be2]"></div><span className="text-white">New Expansion</span></div>
+                  </div>
+                </div>
+              ) : viewMode === "chart" ? (
                 <div className="w-full h-64 mt-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={barData}>

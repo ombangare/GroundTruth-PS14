@@ -213,9 +213,9 @@ export default function BeforeAfterSlider({
             <div className="w-full h-full relative" style={{background: 'linear-gradient(135deg, #0a1628 0%, #0d2137 25%, #071a2c 50%, #0f2942 75%, #061520 100%)'}}>
               <div className="absolute inset-0 opacity-30" style={{backgroundImage: 'radial-gradient(circle at 30% 40%, rgba(34,211,238,0.15) 0%, transparent 50%), radial-gradient(circle at 70% 60%, rgba(16,185,129,0.1) 0%, transparent 40%)'}} />
               <div className="absolute inset-0 flex flex-col items-center justify-center text-signal/60 font-mono text-xs">
-                <span className="text-sm mb-1">📡</span>
-                <span>{afterLabel} — Demo Mode</span>
-                <span className="text-[9px] text-ink-muted/50 mt-1">Draw a rectangle to trigger analysis</span>
+                <span className="text-sm mb-1 animate-pulse">📡</span>
+                <span className="animate-pulse">AWAITING {afterLabel} TELEMETRY...</span>
+                <span className="text-[9px] text-ink-muted/50 mt-1">Fetching live satellite imagery from Google Earth Engine</span>
               </div>
             </div>
           )}
@@ -236,9 +236,9 @@ export default function BeforeAfterSlider({
             <div className="w-full h-full relative" style={{background: 'linear-gradient(135deg, #0f1d2e 0%, #162a3f 25%, #0a1e30 50%, #1a3350 75%, #081828 100%)'}}>
               <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'radial-gradient(circle at 40% 50%, rgba(251,191,36,0.15) 0%, transparent 50%), radial-gradient(circle at 60% 30%, rgba(34,211,238,0.1) 0%, transparent 40%)'}} />
               <div className="absolute inset-0 flex flex-col items-center justify-center text-ink-muted/60 font-mono text-xs">
-                <span className="text-sm mb-1">🛰️</span>
-                <span>{beforeLabel} — Demo Mode</span>
-                <span className="text-[9px] text-ink-muted/40 mt-1">GEE credentials required for live imagery</span>
+                <span className="text-sm mb-1 animate-pulse">🛰️</span>
+                <span className="animate-pulse">AWAITING {beforeLabel} TELEMETRY...</span>
+                <span className="text-[9px] text-ink-muted/40 mt-1">Fetching live satellite imagery from Google Earth Engine</span>
               </div>
             </div>
           )}
