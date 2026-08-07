@@ -38,8 +38,8 @@ _districts_db = None
 def _get_district_metadata(district_id: str) -> dict | None:
     global _districts_db
     if _districts_db is None:
-        # Load the frontend's static GeoJSON file into memory as our "database"
-        geojson_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../frontend/public/districts.geojson"))
+        # Load the backend's static GeoJSON file into memory as our "database"
+        geojson_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../data/districts.geojson"))
         try:
             with open(geojson_path, "r") as f:
                 data = json.load(f)
@@ -209,8 +209,8 @@ def get_district_images_only(district_id: str, year_before: Optional[int] = None
 
     if district_id.lower() == "kolhapur":
         return {
-            "before": "http://localhost:3000/cache/kolhapur_before.png",
-            "after": "http://localhost:3000/cache/kolhapur_after.png",
+            "before": f"{os.environ.get('PRODUCTION_URL', 'http://localhost:3000')}/cache/kolhapur_before.png",
+            "after": f"{os.environ.get('PRODUCTION_URL', 'http://localhost:3000')}/cache/kolhapur_after.png",
             "aoi_bounds": {
                 "minLon": 74.153408,
                 "maxLon": 74.246742,
@@ -360,8 +360,8 @@ def _get_images_for(d: dict) -> dict:
     """Returns cached or just-fetched images. Falls back to Esri World Imagery."""
     if d.get("id", "").lower() == "kolhapur":
         return {
-            "before": "http://localhost:3000/cache/kolhapur_before.png",
-            "after": "http://localhost:3000/cache/kolhapur_after.png",
+            "before": f"{os.environ.get('PRODUCTION_URL', 'http://localhost:3000')}/cache/kolhapur_before.png",
+            "after": f"{os.environ.get('PRODUCTION_URL', 'http://localhost:3000')}/cache/kolhapur_after.png",
             "aoi_bounds": {
                 "minLon": 74.153408,
                 "maxLon": 74.246742,
