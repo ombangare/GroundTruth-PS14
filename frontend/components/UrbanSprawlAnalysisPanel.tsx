@@ -41,7 +41,7 @@ export default function UrbanSprawlAnalysisPanel({ bbox, startYear, endYear, dis
       setData(null);
 
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/api/districts/analyze-urban-sprawl`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_PRODUCTION_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'}/api/districts/analyze-urban-sprawl`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

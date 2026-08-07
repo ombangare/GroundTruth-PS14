@@ -14,7 +14,7 @@ export default function PoiChartPanel({ lat, lon }: { lat: number, lon: number }
       setLoading(true);
       setError(null);
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
+        const baseUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
         const res = await fetch(`${baseUrl}/api/districts/analyze-point`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

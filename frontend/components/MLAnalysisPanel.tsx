@@ -37,7 +37,7 @@ export default function MLAnalysisPanel({ bounds, districtName }: MLAnalysisPane
     setLoading(true);
     setError(null);
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
+      const baseUrl = process.env.NEXT_PUBLIC_PRODUCTION_URL || process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
       const res = await fetch(`${baseUrl}/api/districts/analyze-wetland-health`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
